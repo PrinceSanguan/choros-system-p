@@ -1,0 +1,1914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PNP E-Mapping System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom CSS for specific overrides */
+        .sidebar {
+            transition: all 0.3s ease;
+        }
+        .sidebar-collapsed {
+            width: 70px;
+        }
+        .sidebar-collapsed .nav-text {
+            display: none;
+        }
+        .content {
+            margin-left: 250px;
+            transition: all 0.3s ease;
+        }
+        .content-expanded {
+            margin-left: 70px;
+        }
+        .leaflet-container {
+            height: 500px;
+            width: 100%;
+        }
+        .photo-preview {
+            max-height: 150px;
+            max-width: 100%;
+            object-fit: contain;
+        }
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e3a8a;
+            border-radius: 4px;
+        }
+        .required:after {
+            content: " *";
+            color: red;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar Navigation -->
+        <div id="sidebar" class="sidebar bg-blue-900 text-white w-64 h-full fixed">
+            <div class="flex items-center justify-between p-4 border-b border-blue-700">
+                <div class="flex items-center">
+                    <span class="text-xl font-bold">PNP E-Mapping</span>
+                </div>
+                <button id="toggleSidebar" class="text-white hover:text-blue-200">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            <nav class="mt-4">
+                <ul>
+                    <li>
+                        <a href="#" class="flex items-center p-3 hover:bg-blue-800 border-l-4 border-blue-500 bg-blue-800" data-section="dashboard">
+                            <i class="fas fa-tachometer-alt mx-2"></i>
+                            <span class="nav-text">Quicklook (Dashboard)</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center p-3 hover:bg-blue-800 border-l-4 border-transparent" data-section="map">
+                            <i class="fas fa-map mx-2"></i>
+                            <span class="nav-text">Map</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center p-3 hover:bg-blue-800 border-l-4 border-transparent" data-section="iso-operations">
+                            <i class="fas fa-tasks mx-2"></i>
+                            <span class="nav-text">ISO Operations</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center p-3 hover:bg-blue-800 border-l-4 border-transparent" data-section="sightings">
+                            <i class="fas fa-binoculars mx-2"></i>
+                            <span class="nav-text">Sightings</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center p-3 hover:bg-blue-800 border-l-4 border-transparent" data-section="firearms">
+                            <i class="fas fa-gun mx-2"></i>
+                            <span class="nav-text">Firearms</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center p-3 hover:bg-blue-800 border-l-4 border-transparent" data-section="ctgs">
+                            <i class="fas fa-people-arrows mx-2"></i>
+                            <span class="nav-text">CTGs</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center p-3 hover:bg-blue-800 border-l-4 border-transparent" data-section="pags">
+                            <i class="fas fa-users mx-2"></i>
+                            <span class="nav-text">PAGs</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center p-3 hover:bg-blue-800 border-l-4 border-transparent" data-section="surrendered">
+                            <i class="fas fa-person-circle-question mx-2"></i>
+                            <span class="nav-text">Surrendered</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            <div class="p-4 border-t border-blue-800">
+                <button class="flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 text-white px-1 py-1 rounded-lg transition-all duration-200 absolute bottom-5 left-5" style="width: 200px;">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div id="content" class="content flex-1 overflow-auto">
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="section-content p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-blue-900">Dashboard - Quick Overview</h2>
+                    <div class="flex space-x-2">
+                        <select id="regionFilter" class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">All Regions</option>
+                            <option value="4a">Region 4A (CALABARZON)</option>
+                            <option value="4b">Region 4B (MIMAROPA)</option>
+                            <option value="5">Region 5 (Bicol)</option>
+                        </select>
+                        <button id="refreshData" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                            <i class="fas fa-sync-alt mr-2"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                        <h3 class="text-gray-500 font-semibold mb-2">ISO Operations</h3>
+                        <div class="flex justify-between items-center">
+                            <span class="text-3xl font-bold text-blue-800" id="isoCount">0</span>
+                            <div class="h-14 w-14 bg-blue-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-tasks text-blue-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-500">Total operations conducted</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                        <h3 class="text-gray-500 font-semibold mb-2">Sightings Reported</h3>
+                        <div class="flex justify-between items-center">
+                            <span class="text-3xl font-bold text-green-800" id="sightingsCount">0</span>
+                            <div class="h-14 w-14 bg-green-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-binoculars text-green-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-500">Total sightings recorded</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                        <h3 class="text-gray-500 font-semibold mb-2">Firearms Collected</h3>
+                        <div class="flex justify-between items-center">
+                            <span class="text-3xl font-bold text-red-800" id="firearmsCount">0</span>
+                            <div class="h-14 w-14 bg-red-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-gun text-red-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-500">Total firearms captured/recovered</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                        <h3 class="text-gray-500 font-semibold mb-2">CTGs Tracked</h3>
+                        <div class="flex justify-between items-center">
+                            <span class="text-3xl font-bold text-purple-800" id="ctgCount">0</span>
+                            <div class="h-14 w-14 bg-purple-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-people-arrows text-purple-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-500">Total CTG members monitored</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                        <h3 class="text-gray-500 font-semibold mb-2">PAGs Monitored</h3>
+                        <div class="flex justify-between items-center">
+                            <span class="text-3xl font-bold text-yellow-800" id="pagCount">0</span>
+                            <div class="h-14 w-14 bg-yellow-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-users text-yellow-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-500">Total PAG members tracked</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                        <h3 class="text-gray-500 font-semibold mb-2">Surrendered Individuals</h3>
+                        <div class="flex justify-between items-center">
+                            <span class="text-3xl font-bold text-indigo-800" id="surrenderedCount">0</span>
+                            <div class="h-14 w-14 bg-indigo-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-person-circle-question text-indigo-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-500">Total individuals surrendered</div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                        <h3 class="text-gray-700 font-semibold mb-4">Monthly ISO Operations</h3>
+                        <canvas id="isoChart" height="250"></canvas>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                        <h3 class="text-gray-700 font-semibold mb-4">Regional Distribution</h3>
+                        <canvas id="regionChart" height="250"></canvas>
+                    </div>
+                </div>
+
+                <!-- Recent Data Table -->
+                <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-800">Recent Activities Summary</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Region</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentActivityTable" class="bg-white divide-y divide-gray-200">
+                                <!-- Data will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Map Section -->
+            <section id="map" class="section-content p-6 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-blue-900">Geospatial Mapping</h2>
+                    <div class="flex space-x-2">
+                        <select id="mapRegionFilter" class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">All Regions</option>
+                            <option value="4a">Region 4A (CALABARZON)</option>
+                            <option value="4b">Region 4B (MIMAROPA)</option>
+                            <option value="5">Region 5 (Bicol)</option>
+                        </select>
+                        <select id="mapCategoryFilter" class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">All Categories</option>
+                            <option value="iso">ISO Operations</option>
+                            <option value="sightings">Sightings</option>
+                            <option value="firearms">Firearms</option>
+                            <option value="ctgs">CTGs</option>
+                            <option value="pags">PAGs</option>
+                            <option value="surrendered">Surrendered</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Map Container -->
+                <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                    <div id="mapContainer" class="h-96 w-full flex items-center justify-center bg-gray-100">
+                        <div class="text-center text-gray-500">
+                            <i class="fas fa-map text-5xl mb-2"></i>
+                            <p>Map API will be integrated here</p>
+                            <p class="text-sm">This would display actual geographical data when connected to mapping API</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map Statistics -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                    <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                        <h3 class="text-gray-700 font-semibold mb-2">Hotspot Areas</h3>
+                        <ul class="space-y-2" id="hotspotAreas">
+                            <li class="flex items-center justify-between">
+                                <span>Calamba, Laguna</span>
+                                <span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">High</span>
+                            </li>
+                            <li class="flex items-center justify-between">
+                                <span>Puerto Galera, Oriental Mindoro</span>
+                                <span class="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-semibold">Medium</span>
+                            </li>
+                            <li class="flex items-center justify-between">
+                                <span>Naga City, Camarines Sur</span>
+                                <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">Medium</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                        <h3 class="text-gray-700 font-semibold mb-2">Activity Heatmap</h3>
+                        <div class="h-48 flex items-center justify-center">
+                            <p class="text-gray-500">Activity density visualization would appear here</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                        <h3 class="text-gray-700 font-semibold mb-2">Recent Activities</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-start">
+                                <div class="h-2 w-2 mt-2 rounded-full bg-blue-600 mr-2"></div>
+                                <div>
+                                    <p class="text-sm font-medium">ISO Operation - Cavite</p>
+                                    <p class="text-xs text-gray-500">2 hours ago</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="h-2 w-2 mt-2 rounded-full bg-green-600 mr-2"></div>
+                                <div>
+                                    <p class="text-sm font-medium">Sighting - Marinduque</p>
+                                    <p class="text-xs text-gray-500">5 hours ago</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="h-2 w-2 mt-2 rounded-full bg-red-600 mr-2"></div>
+                                <div>
+                                    <p class="text-sm font-medium">Firearm Recovery - Albay</p>
+                                    <p class="text-xs text-gray-500">1 day ago</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ISO Operations Section -->
+            <section id="iso-operations" class="section-content p-6 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-blue-900">ISO Operations</h2>
+                    <div class="flex space-x-2">
+                        <select id="isoRegionFilter" class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">All Regions</option>
+                            <option value="4a">Region 4A (CALABARZON)</option>
+                            <option value="4b">Region 4B (MIMAROPA)</option>
+                            <option value="5">Region 5 (Bicol)</option>
+                        </select>
+                        <button id="addIsoOperation" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                            <i class="fas fa-plus mr-2"></i>Add New
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ISO Operations Table -->
+                <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operation Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Region</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team Leader</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="isoTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Data will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="px-6 py-4 border-t border-gray-200 text-right">
+                        <button class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                            <i class="fas fa-download mr-1"></i>Export Data
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sightings Section -->
+            <section id="sightings" class="section-content p-6 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-blue-900">Sightings</h2>
+                    <div class="flex space-x-2">
+                        <select id="sightingsRegionFilter" class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">All Regions</option>
+                            <option value="4a">Region 4A (CALABARZON)</option>
+                            <option value="4b">Region 4B (MIMAROPA)</option>
+                            <option value="5">Region 5 (Bicol)</option>
+                        </select>
+                        <button id="addSighting" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                            <i class="fas fa-plus mr-2"></i>Add New
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sightings Table -->
+                <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Region</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coordinates</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sightingsTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Data will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Firearms Section -->
+            <section id="firearms" class="section-content p-6 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-blue-900">Firearms</h2>
+                    <div class="flex space-x-2">
+                        <select id="firearmsRegionFilter" class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">All Regions</option>
+                            <option value="4a">Region 4A (CALABARZON)</option>
+                            <option value="4b">Region 4B (MIMAROPA)</option>
+                            <option value="5">Region 5 (Bicol)</option>
+                        </select>
+                        <button id="addFirearm" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                            <i class="fas fa-plus mr-2"></i>Add New
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Firearms Table -->
+                <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand/Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Caliber</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Region</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location Surrendered</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Surrendered By</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="firearmsTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Data will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CTGs Section -->
+            <section id="ctgs" class="section-content p-6 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-blue-900">CTGs (Communist Terrorist Groups)</h2>
+                    <div class="flex space-x-2">
+                        <select id="ctgRegionFilter" class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">All Regions</option>
+                            <option value="4a">Region 4A (CALABARZON)</option>
+                            <option value="4b">Region 4B (MIMAROPA)</option>
+                            <option value="5">Region 5 (Bicol)</option>
+                        </select>
+                        <button id="addCtg" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                            <i class="fas fa-plus mr-2"></i>Add New
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CTGs Table -->
+                <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Region</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Affiliated Front</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Seen</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ctgTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Data will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGs Section -->
+            <section id="pags" class="section-content p-6 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-blue-900">PAGs (Private Armed Groups)</h2>
+                    <div class="flex space-x-2">
+                        <select id="pagRegionFilter" class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">All Regions</option>
+                            <option value="4a">Region 4A (CALABARZON)</option>
+                            <option value="4b">Region 4B (MIMAROPA)</option>
+                            <option value="5">Region 5 (Bicol)</option>
+                        </select>
+                        <button id="addPag" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                            <i class="fas fa-plus mr-2"></i>Add New
+                        </button>
+                    </div>
+                </div>
+
+                <!-- PAGs Table -->
+                <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Region</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Affiliation</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Seen</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pagTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Data will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Surrendered Section -->
+            <section id="surrendered" class="section-content p-6 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-blue-900">Surrendered Individuals</h2>
+                    <div class="flex space-x-2">
+                        <select id="surrenderedRegionFilter" class="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">All Regions</option>
+                            <option value="4a">Region 4A (CALABARZON)</option>
+                            <option value="4b">Region 4B (MIMAROPA)</option>
+                            <option value="5">Region 5 (Bicol)</option>
+                        </select>
+                        <button id="addSurrendered" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                            <i class="fas fa-plus mr-2"></i>Add New
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Surrendered Table -->
+                <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Photo</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Region</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date of Birth</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Former Group</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Surrendered</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="surrenderedTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Data will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- ISO Operation Modal -->
+    <div id="isoModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-blue-900">Add New ISO Operation</h3>
+                <button id="closeIsoModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="isoOperationForm" class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label for="isoOperationName" class="block text-sm font-medium text-gray-700 required">Operation Name</label>
+                        <input type="text" id="isoOperationName" name="isoOperationName" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="isoRegion" class="block text-sm font-medium text-gray-700 required">Region</label>
+                        <select id="isoRegion" name="isoRegion" required
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select Region</option>
+                            <option value="4a">Region 4A (CALABARZON)</option>
+                            <option value="4b">Region 4B (MIMAROPA)</option>
+                            <option value="5">Region 5 (Bicol)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="isoDate" class="block text-sm font-medium text-gray-700 required">Date & Time</label>
+                        <input type="datetime-local" id="isoDate" name="isoDate" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="isoTeamLeader" class="block text-sm font-medium text-gray-700 required">Team Leader</label>
+                        <input type="text" id="isoTeamLeader" name="isoTeamLeader" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="isoTeamMembers" class="block text-sm font-medium text-gray-700">Team Members</label>
+                        <textarea id="isoTeamMembers" name="isoTeamMembers" rows="3"
+                                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                    <div>
+                        <label for="isoLocationPerDay" class="block text-sm font-medium text-gray-700">Location per Day</label>
+                        <textarea id="isoLocationPerDay" name="isoLocationPerDay" rows="3"
+                                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="isoCoordinates" class="block text-sm font-medium text-gray-700">Coordinates (Latitude, Longitude)</label>
+                        <div class="flex space-x-2">
+                            <input type="text" id="isoLatitude" name="isoLatitude" placeholder="Latitude"
+                                   class="mt-1 block w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" id="isoLongitude" name="isoLongitude" placeholder="Longitude"
+                                   class="mt-1 block w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 text-right">
+                    <button type="button" id="cancelIsoOperation" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 mr-2">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Save Operation
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sighting Modal -->
+    <div id="sightingModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-blue-900">Add New Sighting</h3>
+                <button id="closeSightingModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="sightingForm" class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label for="sightingRegion" class="block text-sm font-medium text-gray-700 required">Region</label>
+                        <select id="sightingRegion" name="sightingRegion" required
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select Region</option>
+                            <option value="4a">Region 4A (CALABARZON)</option>
+                            <option value="4b">Region 4B (MIMAROPA)</option>
+                            <option value="5">Region 5 (Bicol)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="sightingDate" class="block text-sm font-medium text-gray-700 required">Date & Time</label>
+                        <input type="datetime-local" id="sightingDate" name="sightingDate" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="sightingLocation" class="block text-sm font-medium text-gray-700 required">Location</label>
+                        <input type="text" id="sightingLocation" name="sightingLocation" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="sightingCoordinates" class="block text-sm font-medium text-gray-700">Coordinates (Latitude, Longitude)</label>
+                        <div class="flex space-x-2">
+                            <input type="text" id="sightingLatitude" name="sightingLatitude" placeholder="Latitude"
+                                   class="mt-1 block w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" id="sightingLongitude" name="sightingLongitude" placeholder="Longitude"
+                                   class="mt-1 block w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="sightingDescription" class="block text-sm font-medium text-gray-700 required">Description</label>
+                        <textarea id="sightingDescription" name="sightingDescription" rows="4" required
+                                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 text-right">
+                    <button type="button" id="cancelSighting" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 mr-2">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Save Sighting
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firearm Modal -->
+    <div id="firearmModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-blue-900">Add New Firearm Record</h3>
+                <button id="closeFirearmModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="firearmForm" class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label for="firearmRegion" class="block text-sm font-medium text-gray-700 required">Region</label>
+                        <select id="firearmRegion" name="firearmRegion" required
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select Region</option>
+                            <option value="4a">Region 4A (CALABARZON)</option>
+                            <option value="4b">Region 4B (MIMAROPA)</option>
+                            <option value="5">Region 5 (Bicol)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="firearmType" class="block text-sm font-medium text-gray-700 required">Gun Brand/Type</label>
+                        <input type="text" id="firearmType" name="firearmType" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="firearmCaliber" class="block text-sm font-medium text-gray-700 required">Caliber</label>
+                        <input type="text" id="firearmCaliber" name="firearmCaliber" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="firearmDate" class="block text-sm font-medium text-gray-700 required">Date & Time</label>
+                        <input type="datetime-local" id="firearmDate" name="firearmDate" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="firearmLocation" class="block text-sm font-medium text-gray-700 required">Location Surrendered/Recovered</label>
+                        <input type="text" id="firearmLocation" name="firearmLocation" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="firearmSurrenderedBy" class="block text-sm font-medium text-gray-700">Surrendered By</label>
+                        <input type="text" id="firearmSurrenderedBy" name="firearmSurrenderedBy"
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="otherWeapons" class="block text-sm font-medium text-gray-700">Other Weapon Types</label>
+                        <textarea id="otherWeapons" name="otherWeapons" rows="3"
+                                  class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 text-right">
+                    <button type="button" id="cancelFirearm" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 mr-2">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Save Record
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CTG Modal -->
+    <div id="ctgModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-blue-900">Add New CTG Member</h3>
+                <button id="closeCtgModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="ctgForm" class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label for="ctgName" class="block text-sm font-medium text-gray-700 required">Name</label>
+                        <input type="text" id="ctgName" name="ctgName" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="ctgRegion" class="block text-sm font-medium text-gray-700 required">Region</label>
+                        <select id="ctgRegion" name="ctgRegion" required
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select Region</option>
+                            <option value="4a">Region 4A (CALABARZON)</option>
+                            <option value="4b">Region 4B (MIMAROPA)</option>
+                            <option value="5">Region 5 (Bicol)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="ctgAddress" class="block text-sm font-medium text-gray-700 required">Address</label>
+                        <input type="text" id="ctgAddress" name="ctgAddress" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="ctgPob" class="block text-sm font-medium text-gray-700">Place of Birth</label>
+                        <input type="text" id="ctgPob" name="ctgPob"
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="ctgDob" class="block text-sm font-medium text-gray-700">Date of Birth</label>
+                        <input type="date" id="ctgDob" name="ctgDob"
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="ctgAffiliatedFront" class="block text-sm font-medium text-gray-700 required">Affiliated Front/Group</label>
+                        <input type="text" id="ctgAffiliatedFront" name="ctgAffiliatedFront" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="ctgLastSeen" class="block text-sm font-medium text-gray-700">Last Seen</label>
+                        <input type="datetime-local" id="ctgLastSeen" name="ctgLastSeen"
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="ctgStatus" class="block text-sm font-medium text-gray-700 required">Status</label>
+                        <select id="ctgStatus" name="ctgStatus" required
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="active">Active</option>
+                            <option value="neutralized">Neutralized</option>
+                            <option value="surrendered">Surrendered</option>
+                            <option value="deceased">Deceased</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-1">
+                        <label for="ctgPhoto" class="block text-sm font-medium text-gray-700">Photo</label>
+                        <input type="file" id="ctgPhoto" name="ctgPhoto" accept="image/*"
+                               class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        <div class="mt-2">
+                            <img id="ctgPhotoPreview" class="photo-preview hidden" alt="CTG Member Photo Preview">
+                        </div>
+                    </div>
+                    <div class="md:col-span-1">
+                        <label for="ctgDocuments" class="block text-sm font-medium text-gray-700">Documents</label>
+                        <input type="file" id="ctgDocuments" name="ctgDocuments" multiple
+                               class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 text-right">
+                    <button type="button" id="cancelCtg" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 mr-2">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Save CTG Record
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- PAG Modal -->
+    <div id="pagModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-blue-900">Add New PAG Member</h3>
+                <button id="closePagModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="pagForm" class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label for="pagName" class="block text-sm font-medium text-gray-700 required">Name</label>
+                        <input type="text" id="pagName" name="pagName" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="pagRegion" class="block text-sm font-medium text-gray-700 required">Region</label>
+                        <select id="pagRegion" name="pagRegion", required
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select Region</option>
+                            <option value="4a">Region 4A (CALABARZON)</option>
+                            <option value="4b">Region 4B (MIMAROPA)</option>
+                            <option value="5">Region 5 (Bicol)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="pagAddress" class="block text-sm font-medium text-gray-700 required">Address</label>
+                        <input type="text" id="pagAddress" name="pagName" required
+                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="pagPob" class="block text-sm font-medium text-gray-700">Place of Birth</label>
+                        <input type="text" id="pagPob" name="pagPob" 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="pagDob" class="block text-sm font-medium text-gray-700">Date of Birth</label>
+                        <input type="date" id="pagDob" name="pagDob" 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="pagAffiliation" class="block text-sm font-medium text-gray-700 required">Affiliation</label>
+                        <input type="text" id="pagAffiliation" name="pagAffiliation" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="pagLastSeen" class="block text-sm font-medium text-gray-700">Last Seen</label>
+                        <input type="datetime-local" id="pagLastSeen" name="pagLastSeen" 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="pagStatus" class="block text-sm font-medium text-gray-700 required">Status</label>
+                        <select id="pagStatus" name="pagStatus" required
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="active">Active</option>
+                            <option value="neutralized">Neutralized</option>
+                            <option value="surrendered">Surrendered</option>
+                            <option value="deceased">Deceased</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-1">
+                        <label for="pagPhoto" class="block text-sm font-medium text-gray-700">Photo</label>
+                        <input type="file" id="pagPhoto" name="pagPhoto" accept="image/*"
+                               class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        <div class="mt-2">
+                            <img id="pagPhotoPreview" class="photo-preview hidden" alt="PAG Member Photo Preview">
+                        </div>
+                    </div>
+                    <div class="md:col-span-1">
+                        <label for="pagDocuments" class="block text-sm font-medium text-gray-700">Documents</label>
+                        <input type="file" id="pagDocuments" name="pagDocuments" multiple
+                               class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 text-right">
+                    <button type="button" id="cancelPag" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 mr-2">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Save PAG Record
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Surrendered Modal -->
+    <div id="surrenderedModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-blue-900">Add New Surrendered Individual</h3>
+                <button id="closeSurrenderedModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="surrenderedForm" class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label for="surrenderedName" class="block text-sm font-medium text-gray-700 required">Name</label>
+                        <input type="text" id="surrenderedName" name="surrenderedName" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="surrenderedRegion" class="block text-sm font-medium text-gray-700 required">Region</label>
+                        <select id="surrenderedRegion" name="surrenderedRegion" required
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select Region</option>
+                            <option value="4a">Region 4A (CALABARZON)</option>
+                            <option value="4b">Region 4B (MIMAROPA)</option>
+                            <option value="5">Region 5 (Bicol)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="surrenderedAddress" class="block text-sm font-medium text-gray-700 required">Address</label>
+                        <input type="text" id="surrenderedAddress" name="surrenderedAddress" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py 2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="surrenderedPob" class="block text-sm font-medium text-gray-700">Place of Birth</label>
+                        <input type="text" id="surrenderedPob" name="surrenderedPob" 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="surrenderedDob" class="block text-sm font-medium text-gray-700">Date of Birth</label>
+                        <input type="date" id="surrenderedDob" name="surrenderedDob" 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="surrenderedFormerGroup" class="block text-sm font-medium text-gray-700 required">Former Group</label>
+                        <input type="text" id="surrenderedFormerGroup" name="surrenderedFormerGroup" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="surrenderedDate" class="block text-sm font-medium text-gray-700 required">Date Surrendered</label>
+                        <input type="datetime-local" id="surrenderedDate" name="surrenderedDate" required 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="surrenderedLocation" class="block text-sm font-medium text-gray-700">Location Surrendered</label>
+                        <input type="text" id="surrenderedLocation" name="surrenderedLocation" 
+                               class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="surrenderedStatus" class="block text-sm font-medium text-gray-700 required">Current Status</label>
+                        <select id="surrenderedStatus" name="surrenderedStatus" required
+                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="processing">Processing</option>
+                            <option value="rehabilitation">In Rehabilitation</option>
+                            <option value="reintegrated">Reintegrated</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-1">
+                        <label for="surrenderedPhoto" class="block text-sm font-medium text-gray-700 required">Photo</label>
+                        <input type="file" id="surrenderedPhoto" name="surrenderedPhoto" accept="image/*" required
+                               class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        <div class="mt-2">
+                            <img id="surrenderedPhotoPreview" class="photo-preview hidden" alt="Surrendered Individual Photo Preview">
+                        </div>
+                    </div>
+                    <div class="md:col-span-1">
+                        <label for="surrenderedDocuments" class="block text-sm font-medium text-gray-700">Documents</label>
+                        <input type="file" id="surrenderedDocuments" name="surrenderedDocuments" multiple
+                               class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 text-right">
+                    <button type="button" id="cancelSurrendered" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 mr-2">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Save Surrendered Record
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Sample data
+        const sampleData = {
+            isoOperations: [
+                {
+                    id: 1,
+                    name: "Operation Safe CALABARZON",
+                    region: "4a",
+                    date: "2023-06-15T08:30",
+                    teamLeader: "PCol. Juan Dela Cruz",
+                    members: "PCol. Juan Dela Cruz, PMaj. Maria Reyes, PCpt. Carlos Santos",
+                    location: "Batangas City",
+                    coordinates: "13.7563, 121.0583",
+                    locationPerDay: "June 15 - Batangas City; June 16 - Lipa City"
+                },
+                {
+                    id: 2,
+                    name: "MIMAROPA Security Sweep",
+                    region: "4b",
+                    date: "2023-06-20T10:00",
+                    teamLeader: "PCol. Eduardo Lopez",
+                    members: "PCol. Eduardo Lopez, PMaj. Sofia Garcia, PCpt. Miguel Torres",
+                    location: "Puerto Princesa",
+                    coordinates: "9.7392, 118.7353",
+                    locationPerDay: "June 20 - Puerto Princesa; June 21 - El Nido"
+                },
+                {
+                    id: 3,
+                    name: "Operation Bicol Safe Streets",
+                    region: "5",
+                    date: "2023-06-25T07:00",
+                    teamLeader: "PCol. Antonio Bautista",
+                    members: "PCol. Antonio Bautista, PMaj. Lourdes Mendoza, PCpt. Roberto Valencia",
+                    location: "Naga City",
+                    coordinates: "13.6248, 123.1877",
+                    locationPerDay: "June 25 - Naga City; June 26 - Legazpi City"
+                }
+            ],
+            sightings: [
+                {
+                    id: 1,
+                    region: "4a",
+                    date: "2023-06-16T14:30",
+                    location: "Tanauan, Batangas",
+                    coordinates: "14.0867, 121.1495",
+                    description: "Suspected CTG members seen in rural barangay."
+                },
+                {
+                    id: 2,
+                    region: "4b",
+                    date: "2023-06-22T19:45",
+                    location: "San Jose, Occidental Mindoro",
+                    coordinates: "12.3526, 121.0668",
+                    description: "Report of armed men near coastal area."
+                },
+                {
+                    id: 3,
+                    region: "5",
+                    date: "2023-06-27T11:20",
+                    location: "Sorsogon City",
+                    coordinates: "12.9738, 124.0010",
+                    description: "Vehicle matching description of known PAG member."
+                }
+            ],
+            firearms: [
+                {
+                    id: 1,
+                    region: "4a",
+                    type: "M16 Rifle",
+                    caliber: "5.56mm",
+                    date: "2023-06-17T09:15",
+                    location: "Calamba, Laguna",
+                    surrenderedBy: "Unknown (recovered)",
+                    weapons: "1x M16 Rifle, 2x magazines, 100 rounds"
+                },
+                {
+                    id: 2,
+                    region: "4b",
+                    type: "9mm Pistol",
+                    caliber: "9mm",
+                    date: "2023-06-23T15:30",
+                    location: "Romblon",
+                    surrenderedBy: "John Doe (voluntary)",
+                    weapons: "1x 9mm Pistol, 1x magazine, 12 rounds"
+                },
+                {
+                    id: 3,
+                    region: "5",
+                    type: "Shotgun",
+                    caliber: "12 gauge",
+                    date: "2023-06-28T13:45",
+                    location: "Camalig, Albay",
+                    surrenderedBy: "Carlos Reyes (voluntary)",
+                    weapons: "1x Shotgun, 10 shells"
+                }
+            ],
+            ctgs: [
+                {
+                    id: 1,
+                    name: "Jose Santos",
+                    region: "4a",
+                    address: "Unknown, possibly Cavite",
+                    pob: "Trece Martires City",
+                    dob: "1985-03-15",
+                    affiliatedFront: "NPA - Southern Tagalog",
+                    lastSeen: "2023-06-16T14:30",
+                    status: "active"
+                },
+                {
+                    id: 2,
+                    name: "Maria Reyes",
+                    region: "4b",
+                    address: "Rural Occidental Mindoro",
+                    pob: "San Jose, Occidental Mindoro",
+                    dob: "1990-07-22",
+                    affiliatedFront: "NPA - Mindoro Command",
+                    lastSeen: "2023-06-22T00:00",
+                    status: "active"
+                },
+                {
+                    id: 3,
+                    name: "Pedro Bicol",
+                    region: "5",
+                    address: "Rural Sorsogon",
+                    pob: "Bulan, Sorsogon",
+                    dob: "1982-11-05",
+                    affiliatedFront: "NPA - Bicol Regional Party Committee",
+                    lastSeen: "2023-06-27T11:20",
+                    status: "active"
+                }
+            ],
+            pags: [
+                {
+                    id: 1,
+                    name: "Ricardo Gomez",
+                    region: "4a",
+                    address: "Binan, Laguna",
+                    pob: "Binan, Laguna",
+                    dob: "1978-05-30",
+                    affiliation: "Unknown criminal group",
+                    lastSeen: "2023-06-18T21:00",
+                    status: "active"
+                },
+                {
+                    id: 2,
+                    name: "Luisa Fernandez",
+                    region: "4b",
+                    address: "Roxas, Oriental Mindoro",
+                    pob: "Roxas, Oriental Mindoro",
+                    dob: "1985-09-14",
+                    affiliation: "Local armed group",
+                    lastSeen: "2023-06-24T18:30",
+                    status: "active"
+                },
+                {
+                    id: 3,
+                    name: "Domingo Bicolano",
+                    region: "5",
+                    address: "Daraga, Albay",
+                    pob: "Daraga, Albay",
+                    dob: "1975-12-10",
+                    affiliation: "Local militia",
+                    lastSeen: "2023-06-29T14:15",
+                    status: "active"
+                }
+            ],
+            surrendered: [
+                {
+                    id: 1,
+                    name: "Antonio Cruz",
+                    region: "4a",
+                    address: "Nasugbu, Batangas",
+                    pob: "Nasugbu, Batangas",
+                    dob: "1980-08-25",
+                    formerGroup: "NPA - Southern Tagalog",
+                    dateSurrendered: "2023-06-10T10:00",
+                    location: "Nasugbu Police Station",
+                    status: "rehabilitation"
+                },
+                {
+                    id: 2,
+                    name: "Luzviminda Palawan",
+                    region: "4b",
+                    address: "Puerto Princesa",
+                    pob: "Puerto Princesa",
+                    dob: "1988-02-18",
+                    formerGroup: "NPA - Mindoro Command",
+                    dateSurrendered: "2023-06-21T12:30",
+                    location: "Puerto Princesa City Hall",
+                    status: "processing"
+                },
+                {
+                    id: 3,
+                    name: "Roberto Albay",
+                    region: "5",
+                    address: "Legazpi City",
+                    pob: "Legazpi City",
+                    dob: "1972-06-30",
+                    formerGroup: "NPA - Bicol Regional Party Committee",
+                    dateSurrendered: "2023-06-30T15:45",
+                    location: "Legazpi Police Station",
+                    status: "processing"
+                }
+            ]
+        };
+
+        // Dashboard statistics
+        const dashboardStats = {
+            isoCount: sampleData.isoOperations.length,
+            sightingsCount: sampleData.sightings.length,
+            firearmsCount: sampleData.firearms.length,
+            ctgCount: sampleData.ctgs.length,
+            pagCount: sampleData.pags.length,
+            surrenderedCount: sampleData.surrendered.length
+        };
+
+        // Recent activities
+        function getRecentActivities() {
+            let activities = [];
+            
+            // Add all data to activities array
+            sampleData.isoOperations.forEach(op => {
+                activities.push({
+                    date: op.date.split('T')[0],
+                    region: getRegionName(op.region),
+                    category: 'ISO Operation',
+                    details: op.name,
+                    location: op.location
+                });
+            });
+            
+            sampleData.sightings.forEach(sighting => {
+                activities.push({
+                    date: sighting.date.split('T')[0],
+                    region: getRegionName(sighting.region),
+                    category: 'Sighting',
+                    details: sighting.description.substring(0, 50) + '...',
+                    location: sighting.location
+                });
+            });
+            
+            sampleData.firearms.forEach(firearm => {
+                activities.push({
+                    date: firearm.date.split('T')[0],
+                    region: getRegionName(firearm.region),
+                    category: 'Firearm',
+                    details: `${firearm.type} (${firearm.caliber})`,
+                    location: firearm.location
+                });
+            });
+            
+            sampleData.ctgs.forEach(ctg => {
+                activities.push({
+                    date: ctg.lastSeen ? ctg.lastSeen.split('T')[0] : ctg.dob,
+                    region: getRegionName(ctg.region),
+                    category: 'CTG Member',
+                    details: ctg.name,
+                    location: ctg.address
+                });
+            });
+            
+            sampleData.pags.forEach(pag => {
+                activities.push({
+                    date: pag.lastSeen ? pag.lastSeen.split('T')[0] : pag.dob,
+                    region: getRegionName(pag.region),
+                    category: 'PAG Member',
+                    details: pag.name,
+                    location: pag.address
+                });
+            });
+            
+            sampleData.surrendered.forEach(person => {
+                activities.push({
+                    date: person.dateSurrendered.split('T')[0],
+                    region: getRegionName(person.region),
+                    category: 'Surrendered',
+                    details: person.name,
+                    location: person.location
+                });
+            });
+            
+            // Sort by date (newest first)
+            return activities.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
+        }
+
+        // Helper functions
+        function getRegionName(regionCode) {
+            switch(regionCode) {
+                case '4a': return 'Region 4A (CALABARZON)';
+                case '4b': return 'Region 4B (MIMAROPA)';
+                case '5': return 'Region 5 (Bicol)';
+                default: return 'Unknown Region';
+            }
+        }
+
+        function getRegionChartData() {
+            const regions = ['4a', '4b', '5'];
+            const labels = regions.map(getRegionName);
+            
+            const data = regions.map(region => {
+                const isoOps = sampleData.isoOperations.filter(op => op.region === region).length;
+                const sightings = sampleData.sightings.filter(s => s.region === region).length;
+                const firearms = sampleData.firearms.filter(f => f.region === region).length;
+                const ctgs = sampleData.ctgs.filter(c => c.region === region).length;
+                const pags = sampleData.pags.filter(p => p.region === region).length;
+                const surrendered = sampleData.surrendered.filter(s => s.region === region).length;
+                
+                return isoOps + sightings + firearms + ctgs + pags + surrendered;
+            });
+            
+            return { labels, data };
+        }
+
+        function getIsoChartData() {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const currentMonth = new Date().getMonth();
+            
+            // Get last 6 months
+            const chartLabels = [];
+            for (let i = 5; i >= 0; i--) {
+                const monthIndex = (currentMonth - i + 12) % 12;
+                chartLabels.push(months[monthIndex]);
+            }
+            
+            // Generate dummy data for the chart
+            const chartData = chartLabels.map(() => Math.floor(Math.random() * 10) + 2);
+            
+            return { labels: chartLabels, data: chartData };
+        }
+
+        // DOM manipulation functions
+        function populateDashboard() {
+            // Update counters
+            document.getElementById('isoCount').textContent = dashboardStats.isoCount;
+            document.getElementById('sightingsCount').textContent = dashboardStats.sightingsCount;
+            document.getElementById('firearmsCount').textContent = dashboardStats.firearmsCount;
+            document.getElementById('ctgCount').textContent = dashboardStats.ctgCount;
+            document.getElementById('pagCount').textContent = dashboardStats.pagCount;
+            document.getElementById('surrenderedCount').textContent = dashboardStats.surrenderedCount;
+            
+            // Create charts
+            createIsoOperationsChart();
+            createRegionalDistributionChart();
+            
+            // Populate recent activity table
+            const recentActivities = getRecentActivities();
+            const tableBody = document.getElementById('recentActivityTable');
+            tableBody.innerHTML = '';
+            
+            recentActivities.forEach(activity => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${activity.date}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${activity.region}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${activity.category}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${activity.details}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${activity.location}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function createIsoOperationsChart() {
+            const ctx = document.getElementById('isoChart').getContext('2d');
+            const chartData = getIsoChartData();
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: 'ISO Operations',
+                        data: chartData.data,
+                        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Operations'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Month'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createRegionalDistributionChart() {
+            const ctx = document.getElementById('regionChart').getContext('2d');
+            const chartData = getRegionChartData();
+            
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        data: chartData.data,
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.7)',
+                            'rgba(16, 185, 129, 0.7)',
+                            'rgba(245, 158, 11, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(59, 130, 246, 1)',
+                            'rgba(16, 185, 129, 1)',
+                            'rgba(245, 158, 11, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        title: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function populateISOTable() {
+            const tableBody = document.getElementById('isoTableBody');
+            tableBody.innerHTML = '';
+            
+            sampleData.isoOperations.forEach(op => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${op.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${getRegionName(op.region)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(op.date).toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${op.teamLeader}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${op.location}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-blue-600 hover:text-blue-900 mr-3 edit-btn" data-id="${op.id}">Edit</button>
+                        <button class="text-red-600 hover:text-red-900 delete-btn" data-id="${op.id}">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function populateSightingsTable() {
+            const tableBody = document.getElementById('sightingsTableBody');
+            tableBody.innerHTML = '';
+            
+            sampleData.sightings.forEach(sighting => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${sighting.location}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${getRegionName(sighting.region)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(sighting.date).toLocaleString()}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${sighting.description.substring(0, 50)}...</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${sighting.coordinates}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-blue-600 hover:text-blue-900 mr-3 edit-btn" data-id="${sighting.id}">Edit</button>
+                        <button class="text-red-600 hover:text-red-900 delete-btn" data-id="${sighting.id}">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function populateFirearmsTable() {
+            const tableBody = document.getElementById('firearmsTableBody');
+            tableBody.innerHTML = '';
+            
+            sampleData.firearms.forEach(firearm => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${firearm.type}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${firearm.caliber}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${getRegionName(firearm.region)}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${firearm.location}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${firearm.surrenderedBy || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(firearm.date).toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-blue-600 hover:text-blue-900 mr-3 edit-btn" data-id="${firearm.id}">Edit</button>
+                        <button class="text-red-600 hover:text-red-900 delete-btn" data-id="${firearm.id}">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function populateCTGsTable() {
+            const tableBody = document.getElementById('ctgTableBody');
+            tableBody.innerHTML = '';
+            
+            sampleData.ctgs.forEach(ctg => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${ctg.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${getRegionName(ctg.region)}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${ctg.address}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${ctg.affiliatedFront}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${ctg.lastSeen ? new Date(ctg.lastSeen).toLocaleString() : 'Unknown'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(ctg.status)}">
+                            ${ctg.status.charAt(0).toUpperCase() + ctg.status.slice(1)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-blue-600 hover:text-blue-900 mr-3 edit-btn" data-id="${ctg.id}">Edit</button>
+                        <button class="text-red-600 hover:text-red-900 delete-btn" data-id="${ctg.id}">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function populatePAGsTable() {
+            const tableBody = document.getElementById('pagTableBody');
+            tableBody.innerHTML = '';
+            
+            sampleData.pags.forEach(pag => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${pag.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${getRegionName(pag.region)}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${pag.address}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${pag.affiliation}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${pag.lastSeen ? new Date(pag.lastSeen).toLocaleString() : 'Unknown'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(pag.status)}">
+                            ${pag.status.charAt(0).toUpperCase() + pag.status.slice(1)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-blue-600 hover:text-blue-900 mr-3 edit-btn" data-id="${pag.id}">Edit</button>
+                        <button class="text-red-600 hover:text-red-900 delete-btn" data-id="${pag.id}">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function populateSurrenderedTable() {
+            const tableBody = document.getElementById('surrenderedTableBody');
+            tableBody.innerHTML = '';
+            
+            sampleData.surrendered.forEach(person => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                            <i class="fas fa-user text-gray-500"></i>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${person.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${getRegionName(person.region)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(person.dob).toLocaleDateString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${person.formerGroup}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(person.dateSurrendered).toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibeld rounded-full ${getSurrenderedStatusBadgeClass(person.status)}">
+                            ${person.status.charAt(0).toUpperCase() + person.status.slice(1)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-blue-600 hover:text-blue-900 mr-3 edit-btn" data-id="${person.id}">Edit</button>
+                        <button class="text-red-600 hover:text-red-900 delete-btn" data-id="${person.id}">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function getStatusBadgeClass(status) {
+            switch(status) {
+                case 'active': return 'bg-red-100 text-red-800';
+                case 'neutralized': return 'bg-yellow-100 text-yellow-800';
+                case 'surrendered': return 'bg-green-100 text-green-800';
+                case 'deceased': return 'bg-gray-100 text-gray-800';
+                default: return 'bg-blue-100 text-blue-800';
+            }
+        }
+
+        function getSurrenderedStatusBadgeClass(status) {
+            switch(status) {
+                case 'processing': return 'bg-yellow-100 text-yellow-800';
+                case 'rehabilitation': return 'bg-blue-100 text-blue-800';
+                case 'reintegrated': return 'bg-green-100 text-green-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        // DOM event handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize UI
+            populateDashboard();
+            populateISOTable();
+            populateSightingsTable();
+            populateFirearmsTable();
+            populateCTGsTable();
+            populatePAGsTable();
+            populateSurrenderedTable();
+            
+            // Navigation menu toggle
+            document.getElementById('toggleSidebar').addEventListener('click', function() {
+                const sidebar = document.getElementById('sidebar');
+                const content = document.getElementById('content');
+                
+                sidebar.classList.toggle('sidebar-collapsed');
+                content.classList.toggle('content-expanded');
+            });
+            
+            // Navigation menu item clicks
+            document.querySelectorAll('nav a').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Update active menu item
+                    document.querySelectorAll('nav a').forEach(a => {
+                        a.classList.remove('bg-blue-800', 'border-blue-500');
+                        a.classList.add('border-transparent');
+                    });
+                    
+                    this.classList.add('bg-blue-800', 'border-blue-500');
+                    this.classList.remove('border-transparent');
+                    
+                    // Show the selected section
+                    const sectionId = this.getAttribute('data-section');
+                    document.querySelectorAll('.section-content').forEach(section => {
+                        section.classList.add('hidden');
+                    });
+                    document.getElementById(sectionId).classList.remove('hidden');
+                });
+            });
+            
+            // Make dashboard the default active section
+            document.querySelector('nav a[data-section="dashboard"]').click();
+            
+            // Modal handlers
+            // ISO Operation
+            document.getElementById('addIsoOperation').addEventListener('click', function() {
+                document.getElementById('isoModal').classList.remove('hidden');
+            });
+            
+            document.getElementById('closeIsoModal').addEventListener('click', function() {
+                document.getElementById('isoModal').classList.add('hidden');
+            });
+            
+            document.getElementById('cancelIsoOperation').addEventListener('click', function() {
+                document.getElementById('isoModal').classList.add('hidden');
+            });
+            
+            document.getElementById('isoOperationForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                // In a real application, you would send this data to the server
+                alert('ISO Operation saved successfully!');
+                document.getElementById('isoModal').classList.add('hidden');
+                this.reset();
+            });
+            
+            // Sighting
+            document.getElementById('addSighting').addEventListener('click', function() {
+                document.getElementById('sightingModal').classList.remove('hidden');
+            });
+            
+            document.getElementById('closeSightingModal').addEventListener('click', function() {
+                document.getElementById('sightingModal').classList.add('hidden');
+            });
+            
+            document.getElementById('cancelSighting').addEventListener('click', function() {
+                document.getElementById('sightingModal').classList.add('hidden');
+            });
+            
+            document.getElementById('sightingForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                // In a real application, you would send this data to the server
+                alert('Sighting saved successfully!');
+                document.getElementById('sightingModal').classList.add('hidden');
+                this.reset();
+            });
+            
+            // Firearm
+            document.getElementById('addFirearm').addEventListener('click', function() {
+                document.getElementById('firearmModal').classList.remove('hidden');
+            });
+            
+            document.getElementById('closeFirearmModal').addEventListener('click', function() {
+                document.getElementById('firearmModal').classList.add('hidden');
+            });
+            
+            document.getElementById('cancelFirearm').addEventListener('click', function() {
+                document.getElementById('firearmModal').classList.add('hidden');
+            });
+            
+            document.getElementById('firearmForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                // In a real application, you would send this data to the server
+                alert('Firearm record saved successfully!');
+                document.getElementById('firearmModal').classList.add('hidden');
+                this.reset();
+            });
+            
+            // CTG
+            document.getElementById('addCtg').addEventListener('click', function() {
+                document.getElementById('ctgModal').classList.remove('hidden');
+            });
+            
+            document.getElementById('closeCtgModal').addEventListener('click', function() {
+                document.getElementById('ctgModal').classList.add('hidden');
+            });
+            
+            document.getElementById('cancelCtg').addEventListener('click', function() {
+                document.getElementById('ctgModal').classList.add('hidden');
+            });
+            
+            document.getElementById('ctgForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                // In a real application, you would send this data to the server
+                alert('CTG record saved successfully!');
+                document.getElementById('ctgModal').classList.add('hidden');
+                this.reset();
+            });
+            
+            // PAG
+            document.getElementById('addPag').addEventListener('click', function() {
+                document.getElementById('pagModal').classList.remove('hidden');
+            });
+            
+            document.getElementById('closePagModal').addEventListener('click', function() {
+                document.getElementById('pagModal').classList.add('hidden');
+            });
+            
+            document.getElementById('cancelPag').addEventListener('click', function() {
+                document.getElementById('pagModal').classList.add('hidden');
+            });
+            
+            document.getElementById('pagForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                // In a real application, you would send this data to the server
+                alert('PAG record saved successfully!');
+                document.getElementById('pagModal').classList.add('hidden');
+                this.reset();
+            });
+            
+            // Surrendered
+            document.getElementById('addSurrendered').addEventListener('click', function() {
+                document.getElementById('surrenderedModal').classList.remove('hidden');
+            });
+            
+            document.getElementById('closeSurrenderedModal').addEventListener('click', function() {
+                document.getElementById('surrenderedModal').classList.add('hidden');
+            });
+            
+            document.getElementById('cancelSurrendered').addEventListener('click', function() {
+                document.getElementById('surrenderedModal').classList.add('hidden');
+            });
+            
+            document.getElementById('surrenderedForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                // In a real application, you would send this data to the server
+                alert('Surrendered record saved successfully!');
+                document.getElementById('surrenderedModal').classList.add('hidden');
+                this.reset();
+            });
+            
+            // Photo preview handlers
+            document.getElementById('ctgPhoto').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const preview = document.getElementById('ctgPhotoPreview');
+                        preview.src = event.target.result;
+                        preview.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            document.getElementById('pagPhoto').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const preview = document.getElementById('pagPhotoPreview');
+                        preview.src = event.target.result;
+                        preview.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            document.getElementById('surrenderedPhoto').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const preview = document.getElementById('surrenderedPhotoPreview');
+                        preview.src = event.target.result;
+                        preview.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // Refresh data button
+            document.getElementById('refreshData').addEventListener('click', function() {
+                // In a real application, this would fetch fresh data from the server
+                populateDashboard();
+                populateISOTable();
+                populateSightingsTable();
+                populateFirearmsTable();
+                populateCTGsTable();
+                populatePAGsTable();
+                populateSurrenderedTable();
+                
+                // Show a toast notification
+                alert('Data refreshed successfully!');
+            });
+            
+            // Region filter handlers (just stubs in this demo)
+            document.getElementById('regionFilter').addEventListener('change', function() {
+                // In a real application, this would filter the dashboard data
+                console.log('Dashboard filtered by region:', this.value);
+            });
+            
+            document.getElementById('mapRegionFilter').addEventListener('change', function() {
+                // In a real application, this would filter the map data
+                console.log('Map filtered by region:', this.value);
+            });
+            
+            document.getElementById('mapCategoryFilter').addEventListener('change', function() {
+                // In a real application, this would filter the map data
+                console.log('Map filtered by category:', this.value);
+            });
+            
+            document.getElementById('isoRegionFilter').addEventListener('change', function() {
+                // In a real application, this would filter the table data
+                console.log('ISO Operations filtered by region:', this.value);
+            });
+            
+            document.getElementById('sightingsRegionFilter').addEventListener('change', function() {
+                // In a real application, this would filter the table data
+                console.log('Sightings filtered by region:', this.value);
+            });
+            
+            document.getElementById('firearmsRegionFilter').addEventListener('change', function() {
+                // In a real application, this would filter the table data
+                console.log('Firearms filtered by region:', this.value);
+            });
+            
+            document.getElementById('ctgRegionFilter').addEventListener('change', function() {
+                // In a real application, this would filter the table data
+                console.log('CTGs filtered by region:', this.value);
+            });
+            
+            document.getElementById('pagRegionFilter').addEventListener('change', function() {
+                // In a real application, this would filter the table data
+                console.log('PAGs filtered by region:', this.value);
+            });
+            
+            document.getElementById('surrenderedRegionFilter').addEventListener('change', function() {
+                // In a real application, this would filter the table data
+                console.log('Surrendered filtered by region:', this.value);
+            });
+        });
+    </script>
+</body>
+</html>
