@@ -46,6 +46,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/iso-operations-by-month', [DashboardController::class, 'getISOOperationsByMonth'])->name('api.iso-operations-by-month');
     Route::get('/api/regional-distribution', [DashboardController::class, 'getRegionalDistribution'])->name('api.regional-distribution');
 
+    // Map Data API
+    Route::get('/api/map-data', [DashboardController::class, 'getMapData'])->name('api.map-data');
+
     // CTG Routes
     Route::get('/debug-ctgs', function() {
         return response()->json([

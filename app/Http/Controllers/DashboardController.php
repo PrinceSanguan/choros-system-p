@@ -10,6 +10,7 @@ use App\Models\Firearm;
 use App\Models\CTG;
 use App\Models\PAG;
 use App\Models\Surrendered;
+use App\Models\User;
 
 class DashboardController extends Controller
 {
@@ -34,7 +35,7 @@ class DashboardController extends Controller
         $regionData = [];
 
         // Load region-specific data based on user role
-        if ($user->isAdmin()) {
+        if ($user->role === 'admin') {
             // Admin can see all regions
             $regionData = $this->getAllRegionsData();
         } else {
@@ -61,7 +62,7 @@ class DashboardController extends Controller
     /**
      * Get data for all regions (admin view)
      */
-    private function getAllRegionsData()
+    public function getAllRegionsData()
     {
         return [
             'isoOperations' => $this->getISOOperations(),
@@ -180,7 +181,7 @@ class DashboardController extends Controller
         $user = Auth::user();
         $region = null;
 
-        if (!$user->isAdmin()) {
+        if ($user->role !== 'admin') {
             switch ($user->username) {
                 case 'RMFB4A':
                     $region = '4a';
@@ -249,6 +250,253 @@ class DashboardController extends Controller
             'labels' => $labels,
             'data' => $data
         ]);
+    }
+
+    /**
+     * Get map data for Google Maps integration
+     */
+    public function getMapData(Request $request)
+    {
+        $user = Auth::user();
+        $regionFilter = $request->query('region', 'all');
+        $categoryFilter = $request->query('category', 'all');
+
+        // Initialize array to hold all map data
+        $mapData = [];
+
+        // Apply region filter if not "all"
+        $regionCondition = ($regionFilter !== 'all' && in_array($regionFilter, ['4a', '4b', '5']))
+            ? function($query) use ($regionFilter) { return $query->where('region', $regionFilter); }
+            : function($query) { return $query; };
+
+        // Apply user role restrictions
+        if ($user->role !== 'admin') {
+            $userRegion = null;
+            switch ($user->username) {
+                case 'RMFB4A':
+                    $userRegion = '4a';
+                    break;
+                case 'RMFB4B':
+                    $userRegion = '4b';
+                    break;
+                case 'RMFB5':
+                    $userRegion = '5';
+                    break;
+            }
+
+            if ($userRegion) {
+                $regionCondition = function($query) use ($userRegion) {
+                    return $query->where('region', $userRegion);
+                };
+            }
+        }
+
+        // Get data based on category filter or get all if "all"
+        if ($categoryFilter === 'all' || $categoryFilter === 'ctgs') {
+            $ctgs = CTG::where(function($query) use ($regionCondition) {
+                return $regionCondition($query);
+            })->get();
+
+            foreach ($ctgs as $ctg) {
+                // Here we would need to geocode the address if coordinates aren't stored
+                // For this example, we'll use placeholder coordinates
+                $lat = $this->getRandomCoordinate(13, 14);
+                $lng = $this->getRandomCoordinate(120, 123);
+
+                if ($ctg->region === '4a') {
+                    $lat = $this->getRandomCoordinate(13.9, 14.2);
+                    $lng = $this->getRandomCoordinate(120.8, 121.1);
+                } elseif ($ctg->region === '4b') {
+                    $lat = $this->getRandomCoordinate(12.8, 13.3);
+                    $lng = $this->getRandomCoordinate(120.9, 121.5);
+                } elseif ($ctg->region === '5') {
+                    $lat = $this->getRandomCoordinate(13.0, 13.7);
+                    $lng = $this->getRandomCoordinate(123.2, 123.8);
+                }
+
+                $mapData[] = [
+                    'lat' => $lat,
+                    'lng' => $lng,
+                    'type' => 'ctgs',
+                    'region' => $ctg->region,
+                    'title' => $ctg->name,
+                    'description' => $ctg->affiliated_front,
+                    'id' => $ctg->id,
+                    'status' => $ctg->status
+                ];
+            }
+        }
+
+        if ($categoryFilter === 'all' || $categoryFilter === 'iso') {
+            $operations = ISOOperation::where(function($query) use ($regionCondition) {
+                return $regionCondition($query);
+            })->get();
+
+            foreach ($operations as $operation) {
+                // Parse coordinates if stored or use placeholder
+                $lat = $this->getRandomCoordinate(13, 14);
+                $lng = $this->getRandomCoordinate(120, 123);
+
+                if ($operation->region === '4a') {
+                    $lat = $this->getRandomCoordinate(13.9, 14.2);
+                    $lng = $this->getRandomCoordinate(120.8, 121.1);
+                } elseif ($operation->region === '4b') {
+                    $lat = $this->getRandomCoordinate(12.8, 13.3);
+                    $lng = $this->getRandomCoordinate(120.9, 121.5);
+                } elseif ($operation->region === '5') {
+                    $lat = $this->getRandomCoordinate(13.0, 13.7);
+                    $lng = $this->getRandomCoordinate(123.2, 123.8);
+                }
+
+                $mapData[] = [
+                    'lat' => $lat,
+                    'lng' => $lng,
+                    'type' => 'iso',
+                    'region' => $operation->region,
+                    'title' => $operation->name,
+                    'description' => $operation->location,
+                    'id' => $operation->id
+                ];
+            }
+        }
+
+        if ($categoryFilter === 'all' || $categoryFilter === 'sightings') {
+            $sightings = Sighting::where(function($query) use ($regionCondition) {
+                return $regionCondition($query);
+            })->get();
+
+            foreach ($sightings as $sighting) {
+                $lat = $this->getRandomCoordinate(13, 14);
+                $lng = $this->getRandomCoordinate(120, 123);
+
+                if ($sighting->region === '4a') {
+                    $lat = $this->getRandomCoordinate(13.9, 14.2);
+                    $lng = $this->getRandomCoordinate(120.8, 121.1);
+                } elseif ($sighting->region === '4b') {
+                    $lat = $this->getRandomCoordinate(12.8, 13.3);
+                    $lng = $this->getRandomCoordinate(120.9, 121.5);
+                } elseif ($sighting->region === '5') {
+                    $lat = $this->getRandomCoordinate(13.0, 13.7);
+                    $lng = $this->getRandomCoordinate(123.2, 123.8);
+                }
+
+                $mapData[] = [
+                    'lat' => $lat,
+                    'lng' => $lng,
+                    'type' => 'sightings',
+                    'region' => $sighting->region,
+                    'title' => 'Sighting: ' . substr($sighting->description, 0, 30) . '...',
+                    'description' => $sighting->location,
+                    'id' => $sighting->id
+                ];
+            }
+        }
+
+        if ($categoryFilter === 'all' || $categoryFilter === 'firearms') {
+            $firearms = Firearm::where(function($query) use ($regionCondition) {
+                return $regionCondition($query);
+            })->get();
+
+            foreach ($firearms as $firearm) {
+                $lat = $this->getRandomCoordinate(13, 14);
+                $lng = $this->getRandomCoordinate(120, 123);
+
+                if ($firearm->region === '4a') {
+                    $lat = $this->getRandomCoordinate(13.9, 14.2);
+                    $lng = $this->getRandomCoordinate(120.8, 121.1);
+                } elseif ($firearm->region === '4b') {
+                    $lat = $this->getRandomCoordinate(12.8, 13.3);
+                    $lng = $this->getRandomCoordinate(120.9, 121.5);
+                } elseif ($firearm->region === '5') {
+                    $lat = $this->getRandomCoordinate(13.0, 13.7);
+                    $lng = $this->getRandomCoordinate(123.2, 123.8);
+                }
+
+                $mapData[] = [
+                    'lat' => $lat,
+                    'lng' => $lng,
+                    'type' => 'firearms',
+                    'region' => $firearm->region,
+                    'title' => $firearm->type,
+                    'description' => 'Serial: ' . $firearm->serial_number,
+                    'id' => $firearm->id
+                ];
+            }
+        }
+
+        if ($categoryFilter === 'all' || $categoryFilter === 'pags') {
+            $pags = PAG::where(function($query) use ($regionCondition) {
+                return $regionCondition($query);
+            })->get();
+
+            foreach ($pags as $pag) {
+                $lat = $this->getRandomCoordinate(13, 14);
+                $lng = $this->getRandomCoordinate(120, 123);
+
+                if ($pag->region === '4a') {
+                    $lat = $this->getRandomCoordinate(13.9, 14.2);
+                    $lng = $this->getRandomCoordinate(120.8, 121.1);
+                } elseif ($pag->region === '4b') {
+                    $lat = $this->getRandomCoordinate(12.8, 13.3);
+                    $lng = $this->getRandomCoordinate(120.9, 121.5);
+                } elseif ($pag->region === '5') {
+                    $lat = $this->getRandomCoordinate(13.0, 13.7);
+                    $lng = $this->getRandomCoordinate(123.2, 123.8);
+                }
+
+                $mapData[] = [
+                    'lat' => $lat,
+                    'lng' => $lng,
+                    'type' => 'pags',
+                    'region' => $pag->region,
+                    'title' => $pag->name,
+                    'description' => $pag->affiliation,
+                    'id' => $pag->id
+                ];
+            }
+        }
+
+        if ($categoryFilter === 'all' || $categoryFilter === 'surrendered') {
+            $surrendered = Surrendered::where(function($query) use ($regionCondition) {
+                return $regionCondition($query);
+            })->get();
+
+            foreach ($surrendered as $person) {
+                $lat = $this->getRandomCoordinate(13, 14);
+                $lng = $this->getRandomCoordinate(120, 123);
+
+                if ($person->region === '4a') {
+                    $lat = $this->getRandomCoordinate(13.9, 14.2);
+                    $lng = $this->getRandomCoordinate(120.8, 121.1);
+                } elseif ($person->region === '4b') {
+                    $lat = $this->getRandomCoordinate(12.8, 13.3);
+                    $lng = $this->getRandomCoordinate(120.9, 121.5);
+                } elseif ($person->region === '5') {
+                    $lat = $this->getRandomCoordinate(13.0, 13.7);
+                    $lng = $this->getRandomCoordinate(123.2, 123.8);
+                }
+
+                $mapData[] = [
+                    'lat' => $lat,
+                    'lng' => $lng,
+                    'type' => 'surrendered',
+                    'region' => $person->region,
+                    'title' => $person->name,
+                    'description' => 'Surrendered: ' . $person->date_surrendered,
+                    'id' => $person->id
+                ];
+            }
+        }
+
+        return response()->json($mapData);
+    }
+
+    /**
+     * Helper method to generate random coordinates within a range
+     */
+    private function getRandomCoordinate($min, $max)
+    {
+        return $min + (mt_rand() / mt_getrandmax()) * ($max - $min);
     }
 
     /**
