@@ -142,6 +142,42 @@
                     affiliated_front: "NPA - Mindoro Command",
                     last_seen: "2023-10-05 16:30:00",
                     status: "surrendered"
+                },
+                {
+                    id: 6,
+                    name: "Rafael Gonzales",
+                    region: "5",
+                    address: "Camarines Sur",
+                    affiliated_front: "NPA - Bicol Regional Party Committee",
+                    last_seen: "2023-11-20 14:15:00",
+                    status: "deceased"
+                },
+                {
+                    id: 7,
+                    name: "Sofia Bautista",
+                    region: "4a",
+                    address: "Rizal province",
+                    affiliated_front: "NPA - Southern Tagalog",
+                    last_seen: "2024-01-05 17:20:00",
+                    status: "active"
+                },
+                {
+                    id: 8,
+                    name: "Manuel Dimaculangan",
+                    region: "4b",
+                    address: "Occidental Mindoro highlands",
+                    affiliated_front: "NPA - Mindoro Command",
+                    last_seen: "2023-09-12 11:40:00",
+                    status: "surrendered"
+                },
+                {
+                    id: 9,
+                    name: "Cristina Aguilar",
+                    region: "5",
+                    address: "Albay province",
+                    affiliated_front: "NPA - Bicol Regional Party Committee",
+                    last_seen: "2023-10-28 09:35:00",
+                    status: "active"
                 }
             ];
 
@@ -205,9 +241,7 @@
             document.querySelectorAll('.edit-ctg').forEach(button => {
                 button.addEventListener('click', function() {
                     const id = this.getAttribute('data-id');
-                    if (window.editCtg) {
-                        window.editCtg(id);
-                    }
+                    handleEditCtg(id, sampleData);
                 });
             });
 
@@ -326,9 +360,7 @@
                     document.querySelectorAll('.edit-ctg').forEach(button => {
                         button.addEventListener('click', function() {
                             const id = this.getAttribute('data-id');
-                            if (window.editCtg) {
-                                window.editCtg(id);
-                            }
+                            handleEditCtg(id, data.data);
                         });
                     });
 
@@ -382,5 +414,124 @@
                 });
             }
         }
+
+        // Function to handle editing a CTG
+        function handleEditCtg(id, sampleDataArray) {
+            console.log('Editing CTG with ID:', id);
+
+            // First try to get the CTG data from the API
+            fetch(`/ctgs/${id}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('API response error');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success && data.data) {
+                    console.log('Successfully retrieved CTG data from API:', data.data);
+                    openEditModal(data.data);
+                } else {
+                    throw new Error('No data in API response');
+                }
+            })
+            .catch(error => {
+                console.warn('Failed to get CTG data from API, using sample data instead:', error);
+
+                // Fallback to sample data if API call fails
+                if (sampleDataArray) {
+                    // Find the CTG by ID in the sample data
+                    const ctg = sampleDataArray.find(c => c.id == id);
+                    if (ctg) {
+                        console.log('Found CTG in sample data:', ctg);
+                        openEditModal(ctg);
+                    } else {
+                        console.error('CTG not found in sample data');
+                        alert('Failed to find CTG data for editing');
+                    }
+                } else {
+                    console.error('No sample data available for fallback');
+                    alert('Failed to retrieve CTG data for editing');
+                }
+            });
+        }
+
+        // Function to open the edit modal with CTG data
+        function openEditModal(ctg) {
+            const modal = document.getElementById('ctgModal');
+            if (!modal) {
+                console.error('CTG modal not found');
+                alert('Edit modal not found');
+                return;
+            }
+
+            // Set form title
+            document.querySelector('#ctgModal h3').textContent = 'Edit CTG Member';
+
+            // Fill form fields
+            document.getElementById('ctgId').value = ctg.id;
+            document.getElementById('ctgName').value = ctg.name;
+            document.getElementById('ctgRegion').value = ctg.region;
+            document.getElementById('ctgAddress').value = ctg.address;
+
+            if (document.getElementById('ctgPob')) {
+                document.getElementById('ctgPob').value = ctg.pob || '';
+            }
+
+            if (document.getElementById('ctgDob')) {
+                document.getElementById('ctgDob').value = ctg.dob ? formatDateForInput(ctg.dob) : '';
+            }
+
+            document.getElementById('ctgAffiliatedFront').value = ctg.affiliated_front;
+
+            if (document.getElementById('ctgLastSeen')) {
+                document.getElementById('ctgLastSeen').value = ctg.last_seen ? formatDateTimeForInput(ctg.last_seen) : '';
+            }
+
+            document.getElementById('ctgStatus').value = ctg.status;
+
+            // Show photo if available
+            const photoPreview = document.getElementById('ctgPhotoPreview');
+            if (photoPreview) {
+                if (ctg.photo_path) {
+                    photoPreview.src = `/storage/${ctg.photo_path}`;
+                    photoPreview.classList.remove('hidden');
+                } else {
+                    photoPreview.classList.add('hidden');
+                }
+            }
+
+            // Show the modal
+            modal.classList.remove('hidden');
+
+            // Set global edit ID
+            window.ctgEditId = ctg.id;
+        }
+
+        // Helper function to format date for input
+        function formatDateForInput(dateString) {
+            const date = new Date(dateString);
+            return date.toISOString().split('T')[0];
+        }
+
+        // Helper function to format datetime for input
+        function formatDateTimeForInput(dateTimeString) {
+            const date = new Date(dateTimeString);
+            return date.toISOString().slice(0, 16);
+        }
+
+        // Assign the function to window so it can be called globally
+        window.editCtg = function(id) {
+            handleEditCtg(id, window.sampleData || null);
+        };
+
+        // Store sample data globally for reference
+        window.sampleData = sampleData;
     });
 </script>
