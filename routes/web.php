@@ -26,6 +26,17 @@ Route::get('/debug/surrendered', function() {
     return response()->json(['success' => true, 'count' => $data->count(), 'data' => $data]);
 });
 
+// Direct CTG debug route - no auth required for testing - REMOVE IN PRODUCTION
+Route::get('/debug/ctgs', function() {
+    $data = \App\Models\CTG::all();
+    return response()->json([
+        'success' => true,
+        'count' => $data->count(),
+        'data' => $data,
+        'sample_data' => (new App\Http\Controllers\CTGController())->getSampleData()
+    ]);
+});
+
 // Protected Routes
 Route::middleware(['auth'])->group(function () {
     // Dashboard Route
@@ -36,6 +47,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/regional-distribution', [DashboardController::class, 'getRegionalDistribution'])->name('api.regional-distribution');
 
     // CTG Routes
+    Route::get('/debug-ctgs', function() {
+        return response()->json([
+            'message' => 'CTG debug route is working',
+            'sample_data' => (new App\Http\Controllers\CTGController())->getSampleData(),
+        ]);
+    });
     Route::post('/ctgs', [CTGController::class, 'store'])->name('ctgs.store');
     Route::get('/ctgs', [CTGController::class, 'index'])->name('ctgs.index');
     Route::get('/ctgs/{id}', [CTGController::class, 'show'])->name('ctgs.show');

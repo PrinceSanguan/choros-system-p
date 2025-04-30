@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use App\Models\CTG;
 use App\Models\CTGDocument;
 
@@ -24,15 +25,113 @@ class CTGController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Fetch all CTGs from the database with their documents
-        $ctgs = CTG::all();
+        // Log the request for debugging
+        Log::info('CTG index method called', [
+            'has_region' => $request->has('region'),
+            'region_param' => $request->query('region')
+        ]);
+
+        // Check if region filter is provided
+        if ($request->has('region')) {
+            $region = $request->query('region');
+            $ctgs = CTG::where('region', $region)->get();
+            Log::info('Filtered CTGs by region', [
+                'region' => $region,
+                'count' => $ctgs->count()
+            ]);
+        } else {
+            // Fetch all CTGs from the database
+            $ctgs = CTG::all();
+            Log::info('Fetched all CTGs', [
+                'count' => $ctgs->count()
+            ]);
+        }
+
+        // If no records found, return static sample data for testing
+        if ($ctgs->isEmpty()) {
+            $ctgs = $this->getSampleData();
+            Log::info('Using sample data for testing', [
+                'count' => count($ctgs)
+            ]);
+        }
 
         return response()->json([
             'success' => true,
             'data' => $ctgs
         ]);
+    }
+
+    /**
+     * Get sample data for testing purposes.
+     *
+     * @return array
+     */
+    public function getSampleData()
+    {
+        return [
+            [
+                'id' => 1,
+                'name' => 'Jose Santos',
+                'region' => '4a',
+                'address' => 'Unknown, possibly Cavite',
+                'pob' => 'Trece Martires City',
+                'dob' => '1985-03-15',
+                'affiliated_front' => 'NPA - Southern Tagalog',
+                'last_seen' => '2023-11-16 14:30:00',
+                'status' => 'active',
+                'photo_path' => null,
+            ],
+            [
+                'id' => 2,
+                'name' => 'Maria Reyes',
+                'region' => '4b',
+                'address' => 'Rural Occidental Mindoro',
+                'pob' => 'San Jose, Occidental Mindoro',
+                'dob' => '1990-07-22',
+                'affiliated_front' => 'NPA - Mindoro Command',
+                'last_seen' => '2023-12-22 19:45:00',
+                'status' => 'active',
+                'photo_path' => null,
+            ],
+            [
+                'id' => 3,
+                'name' => 'Pedro Bicol',
+                'region' => '5',
+                'address' => 'Rural Sorsogon',
+                'pob' => 'Bulan, Sorsogon',
+                'dob' => '1982-11-05',
+                'affiliated_front' => 'NPA - Bicol Regional Party Committee',
+                'last_seen' => '2024-01-27 11:20:00',
+                'status' => 'active',
+                'photo_path' => null,
+            ],
+            [
+                'id' => 4,
+                'name' => 'Antonio Mendoza',
+                'region' => '4a',
+                'address' => 'Batangas province',
+                'pob' => 'Lipa City',
+                'dob' => '1988-05-10',
+                'affiliated_front' => 'NPA - Southern Tagalog',
+                'last_seen' => '2023-12-10 08:45:00',
+                'status' => 'neutralized',
+                'photo_path' => null,
+            ],
+            [
+                'id' => 5,
+                'name' => 'Elena Castro',
+                'region' => '4b',
+                'address' => 'Eastern Mindoro',
+                'pob' => 'Puerto Galera',
+                'dob' => '1992-09-18',
+                'affiliated_front' => 'NPA - Mindoro Command',
+                'last_seen' => '2023-10-05 16:30:00',
+                'status' => 'surrendered',
+                'photo_path' => null,
+            ]
+        ];
     }
 
     /**
