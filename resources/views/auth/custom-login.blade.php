@@ -24,7 +24,7 @@
     <div class="overlay flex items-center justify-center">
         <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md">
             <div class="text-center mb-8">
-                <img src="https://pnp.gov.ph/images/PNP/logo2.png" alt="PNP Logo" class="h-24 mx-auto mb-4">
+                <img src="{{ asset('logo.png') }}" alt="PNP Logo" class="h-24 mx-auto mb-4">
                 <h1 class="text-2xl font-bold text-blue-900">PNP E-Mapping System</h1>
                 <p class="text-gray-600">Anti-Partisan Communist Local Support System</p>
             </div>
