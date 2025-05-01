@@ -29,7 +29,7 @@
     </div>
 
     <!-- Map Statistics -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
             <h3 class="text-gray-700 font-semibold mb-2">Hotspot Areas</h3>
             <ul class="space-y-2" id="hotspotAreas">
@@ -46,12 +46,6 @@
                     <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">Medium</span>
                 </li>
             </ul>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
-            <h3 class="text-gray-700 font-semibold mb-2">Activity Heatmap</h3>
-            <div class="h-48 flex items-center justify-center">
-                <p class="text-gray-500">Activity density visualization would appear here</p>
-            </div>
         </div>
         <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
             <h3 class="text-gray-700 font-semibold mb-2">Recent Activities</h3>
@@ -87,7 +81,7 @@
     // Load Google Maps API
     function loadGoogleMapsScript() {
         const script = document.createElement('script');
-        script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyCdERgahWsAJaBY0MjZ6TCFM4k9NIughs4&callback=initMap&libraries=places,visualization";
+        script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyCdERgahWsAJaBY0MjZ6TCFM4k9NIughs4&callback=initMap&libraries=places";
         script.async = true;
         script.defer = true;
         document.head.appendChild(script);
@@ -96,7 +90,6 @@
     // Initialize map and markers
     let map;
     let markers = [];
-    let heatmap;
 
     // Initialize map when Google Maps API is loaded
     window.initMap = function() {
@@ -145,7 +138,6 @@
         .then(response => response.json())
         .then(data => {
             addMapMarkers(data, regionFilter, categoryFilter);
-            createHeatmap(data, regionFilter, categoryFilter);
         })
         .catch(error => {
             console.error('Error fetching map data:', error);
@@ -203,9 +195,6 @@
         filteredData.forEach(item => {
             addMarker(item);
         });
-
-        // Create heatmap from the data points
-        createHeatmap(filteredData, regionFilter, categoryFilter);
     }
 
     // Add a single marker to the map
@@ -284,36 +273,12 @@
         addSampleMarkers(regionFilter, categoryFilter);
     }
 
-    // Create a heatmap layer
-    function createHeatmap(data, regionFilter, categoryFilter) {
-        // Clean up existing heatmap
-        if (heatmap) {
-            heatmap.setMap(null);
-        }
-
-        // Convert locations to Google Maps LatLng objects
-        const heatmapData = data.map(item => {
-            return new google.maps.LatLng(item.lat, item.lng);
-        });
-
-        heatmap = new google.maps.visualization.HeatmapLayer({
-            data: heatmapData,
-            map: map,
-            radius: 20,
-            opacity: 0.6
-        });
-    }
-
     // Clear all markers from the map
     function clearMarkers() {
         markers.forEach(marker => {
             marker.setMap(null);
         });
         markers = [];
-
-        if (heatmap) {
-            heatmap.setMap(null);
-        }
     }
 
     // Load Google Maps when the map section is shown
