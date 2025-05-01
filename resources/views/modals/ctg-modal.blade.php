@@ -68,6 +68,14 @@
                         <input type="file" id="ctgPhoto" name="photo" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" accept="image/*">
                         <img id="ctgPhotoPreview" class="mt-2 hidden max-h-32 object-contain" alt="Photo preview">
                     </div>
+
+                    <div class="md:col-span-2">
+                        <label for="ctgDocument" class="block text-sm font-medium text-gray-700 mb-1">Documents (PDF/DOCX)</label>
+                        <input type="file" id="ctgDocument" name="document" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" accept=".pdf,.docx">
+                        <div id="ctgDocumentInfo" class="mt-2 hidden">
+                            <p class="text-sm text-gray-600">Current document: <span id="documentName" class="font-medium"></span></p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex justify-end space-x-2 mt-6">
@@ -90,6 +98,7 @@
             document.getElementById('ctgForm').reset();
             document.getElementById('ctgId').value = '';
             document.getElementById('ctgPhotoPreview').classList.add('hidden');
+            document.getElementById('ctgDocumentInfo').classList.add('hidden');
             document.querySelector('#ctgModal h3').textContent = 'Add CTG Member';
             document.getElementById('ctgModal').classList.remove('hidden');
         });
@@ -114,6 +123,17 @@
                     preview.classList.remove('hidden');
                 };
                 reader.readAsDataURL(file);
+            }
+        });
+
+        // Document file handler
+        document.getElementById('ctgDocument')?.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('documentName').textContent = file.name;
+                document.getElementById('ctgDocumentInfo').classList.remove('hidden');
+            } else {
+                document.getElementById('ctgDocumentInfo').classList.add('hidden');
             }
         });
 

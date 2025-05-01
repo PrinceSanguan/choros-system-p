@@ -36,6 +36,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Affiliated Front</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Seen</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documents</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -117,6 +118,13 @@
                     }
                 };
 
+                // Document link
+                const documentLink = ctg.document_path
+                    ? `<a href="/storage/${ctg.document_path}" target="_blank" class="text-blue-600 hover:text-blue-800 flex items-center">
+                          <i class="fas fa-file-alt mr-1"></i>${ctg.document_path.split('/').pop()}
+                       </a>`
+                    : 'None';
+
                 row.innerHTML = `
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${ctg.name || 'N/A'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${getRegionName(ctg.region)}</td>
@@ -128,6 +136,7 @@
                                 ${ctg.status ? ctg.status.charAt(0).toUpperCase() + ctg.status.slice(1) : 'Unknown'}
                         </span>
                     </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${documentLink}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                         @if(auth()->user()->role !== 'user')
                         <button class="text-blue-600 hover:text-blue-900 edit-ctg" data-id="${ctg.id}">Edit</button>
@@ -174,6 +183,7 @@
                     last_seen: '2023-11-16 14:30:00',
                     status: 'active',
                     photo_path: null,
+                    document_path: null,
                 },
                 {
                     id: 2,
@@ -186,6 +196,7 @@
                     last_seen: '2023-12-22 19:45:00',
                     status: 'active',
                     photo_path: null,
+                    document_path: null,
                 },
                 {
                     id: 3,
@@ -198,6 +209,7 @@
                     last_seen: '2024-01-27 11:20:00',
                     status: 'active',
                     photo_path: null,
+                    document_path: 'documents/bicol-report.pdf',
                 },
                 {
                     id: 4,
@@ -210,6 +222,7 @@
                     last_seen: '2023-12-10 08:45:00',
                     status: 'neutralized',
                     photo_path: null,
+                    document_path: null,
                 },
                 {
                     id: 5,
@@ -222,6 +235,7 @@
                     last_seen: '2023-10-05 16:30:00',
                     status: 'surrendered',
                     photo_path: null,
+                    document_path: 'documents/castro-statement.docx',
                 }
             ];
         };
@@ -378,6 +392,18 @@
                     photoPreview.classList.remove('hidden');
                 } else {
                     photoPreview.classList.add('hidden');
+                }
+            }
+
+            // Show document info if available
+            const documentInfo = document.getElementById('ctgDocumentInfo');
+            const documentName = document.getElementById('documentName');
+            if (documentInfo && documentName) {
+                if (ctg.document_path) {
+                    documentName.textContent = ctg.document_path.split('/').pop();
+                    documentInfo.classList.remove('hidden');
+                } else {
+                    documentInfo.classList.add('hidden');
                 }
             }
 

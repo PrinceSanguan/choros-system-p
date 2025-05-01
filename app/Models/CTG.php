@@ -31,6 +31,7 @@ class CTG extends Model
         'last_seen',
         'status',
         'photo_path',
+        'document_path',
     ];
 
     /**

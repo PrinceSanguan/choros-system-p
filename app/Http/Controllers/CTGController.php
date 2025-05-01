@@ -111,6 +111,7 @@ class CTGController extends Controller
                 'last_seen' => '2023-11-16 14:30:00',
                 'status' => 'active',
                 'photo_path' => null,
+                'document_path' => null,
             ],
             [
                 'id' => 2,
@@ -123,6 +124,7 @@ class CTGController extends Controller
                 'last_seen' => '2023-12-22 19:45:00',
                 'status' => 'active',
                 'photo_path' => null,
+                'document_path' => null,
             ],
             [
                 'id' => 3,
@@ -135,6 +137,7 @@ class CTGController extends Controller
                 'last_seen' => '2024-01-27 11:20:00',
                 'status' => 'active',
                 'photo_path' => null,
+                'document_path' => 'documents/bicol-report.pdf',
             ],
             [
                 'id' => 4,
@@ -147,6 +150,7 @@ class CTGController extends Controller
                 'last_seen' => '2023-12-10 08:45:00',
                 'status' => 'neutralized',
                 'photo_path' => null,
+                'document_path' => null,
             ],
             [
                 'id' => 5,
@@ -159,6 +163,7 @@ class CTGController extends Controller
                 'last_seen' => '2023-10-05 16:30:00',
                 'status' => 'surrendered',
                 'photo_path' => null,
+                'document_path' => 'documents/castro-statement.docx',
             ]
         ];
     }
@@ -182,13 +187,19 @@ class CTGController extends Controller
             'last_seen' => 'nullable|date',
             'status' => 'required|string|in:active,neutralized,surrendered,deceased',
             'photo' => 'nullable|image|max:2048',
+            'document' => 'nullable|file|mimes:pdf,docx,doc|max:10240',
         ]);
 
         // Handle file uploads
         $photoPath = null;
+        $documentPath = null;
 
         if ($request->hasFile('photo')) {
             $photoPath = $request->file('photo')->store('ctg-photos', 'public');
+        }
+
+        if ($request->hasFile('document')) {
+            $documentPath = $request->file('document')->store('ctg-documents', 'public');
         }
 
         // Create new CTG record
@@ -202,6 +213,7 @@ class CTGController extends Controller
             'last_seen' => $validated['last_seen'] ?? null,
             'status' => $validated['status'],
             'photo_path' => $photoPath,
+            'document_path' => $documentPath,
         ]);
 
         $ctg->save();
@@ -265,20 +277,30 @@ class CTGController extends Controller
             'last_seen' => 'nullable|date',
             'status' => 'required|string|in:active,neutralized,surrendered,deceased',
             'photo' => 'nullable|image|max:2048',
+            'document' => 'nullable|file|mimes:pdf,docx,doc|max:10240',
         ]);
 
-        // Handle photo upload if a new one is provided
+        // Handle photo upload
         if ($request->hasFile('photo')) {
             // Delete old photo if exists
             if ($ctg->photo_path) {
                 Storage::disk('public')->delete($ctg->photo_path);
             }
-
             $photoPath = $request->file('photo')->store('ctg-photos', 'public');
             $ctg->photo_path = $photoPath;
         }
 
-        // Update CTG record
+        // Handle document upload
+        if ($request->hasFile('document')) {
+            // Delete old document if exists
+            if ($ctg->document_path) {
+                Storage::disk('public')->delete($ctg->document_path);
+            }
+            $documentPath = $request->file('document')->store('ctg-documents', 'public');
+            $ctg->document_path = $documentPath;
+        }
+
+        // Update CTG data
         $ctg->name = $validated['name'];
         $ctg->region = $validated['region'];
         $ctg->address = $validated['address'];
