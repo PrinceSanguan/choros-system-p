@@ -122,6 +122,14 @@
                             <span class="nav-text">Surrendered</span>
                         </a>
                     </li>
+                    @if(auth()->user()->isAdmin())
+                    <li>
+                        <a href="{{ route('admin.users.index') }}" class="flex items-center p-3 hover:bg-blue-800 border-l-4 border-transparent">
+                            <i class="fas fa-users-cog mx-2"></i>
+                            <span class="nav-text">User Management</span>
+                        </a>
+                    </li>
+                    @endif
                 </ul>
             </nav>
             <div class="p-4 border-t border-blue-800">
@@ -178,7 +186,7 @@
                     <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
                         <h3 class="text-gray-500 font-semibold mb-2">ISO Operations</h3>
                         <div class="flex justify-between items-center">
-                            <span class="text-3xl font-bold text-blue-800" id="isoCount">{{ count($regionData['isoOperations']) }}</span>
+                            <span class="text-3xl font-bold text-blue-800" id="isoCount">{{ isset($regionData['isoOperations']) ? count($regionData['isoOperations']) : 0 }}</span>
                             <div class="h-14 w-14 bg-blue-100 rounded-full flex items-center justify-center">
                                 <i class="fas fa-tasks text-blue-600 text-xl"></i>
                             </div>
@@ -188,7 +196,7 @@
                     <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
                         <h3 class="text-gray-500 font-semibold mb-2">Sightings Reported</h3>
                         <div class="flex justify-between items-center">
-                            <span class="text-3xl font-bold text-green-800" id="sightingsCount">{{ count($regionData['sightings']) }}</span>
+                            <span class="text-3xl font-bold text-green-800" id="sightingsCount">{{ isset($regionData['sightings']) ? count($regionData['sightings']) : 0 }}</span>
                             <div class="h-14 w-14 bg-green-100 rounded-full flex items-center justify-center">
                                 <i class="fas fa-binoculars text-green-600 text-xl"></i>
                             </div>
@@ -198,7 +206,7 @@
                     <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
                         <h3 class="text-gray-500 font-semibold mb-2">Firearms Collected</h3>
                         <div class="flex justify-between items-center">
-                            <span class="text-3xl font-bold text-red-800" id="firearmsCount">{{ count($regionData['firearms']) }}</span>
+                            <span class="text-3xl font-bold text-red-800" id="firearmsCount">{{ isset($regionData['firearms']) ? count($regionData['firearms']) : 0 }}</span>
                             <div class="h-14 w-14 bg-red-100 rounded-full flex items-center justify-center">
                                 <i class="fas fa-gun text-red-600 text-xl"></i>
                             </div>
@@ -208,7 +216,7 @@
                     <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
                         <h3 class="text-gray-500 font-semibold mb-2">CTGs Tracked</h3>
                         <div class="flex justify-between items-center">
-                            <span class="text-3xl font-bold text-purple-800" id="ctgCount">{{ count($regionData['ctgs']) }}</span>
+                            <span class="text-3xl font-bold text-purple-800" id="ctgCount">{{ isset($regionData['ctgs']) ? count($regionData['ctgs']) : 0 }}</span>
                             <div class="h-14 w-14 bg-purple-100 rounded-full flex items-center justify-center">
                                 <i class="fas fa-people-arrows text-purple-600 text-xl"></i>
                             </div>
@@ -218,7 +226,7 @@
                     <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
                         <h3 class="text-gray-500 font-semibold mb-2">PAGs Monitored</h3>
                         <div class="flex justify-between items-center">
-                            <span class="text-3xl font-bold text-yellow-800" id="pagCount">{{ count($regionData['pags']) }}</span>
+                            <span class="text-3xl font-bold text-yellow-800" id="pagCount">{{ isset($regionData['pags']) ? count($regionData['pags']) : 0 }}</span>
                             <div class="h-14 w-14 bg-yellow-100 rounded-full flex items-center justify-center">
                                 <i class="fas fa-users text-yellow-600 text-xl"></i>
                             </div>
@@ -228,7 +236,7 @@
                     <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
                         <h3 class="text-gray-500 font-semibold mb-2">Surrendered Individuals</h3>
                         <div class="flex justify-between items-center">
-                            <span class="text-3xl font-bold text-indigo-800" id="surrenderedCount">{{ count($regionData['surrendered']) }}</span>
+                            <span class="text-3xl font-bold text-indigo-800" id="surrenderedCount">{{ isset($regionData['surrendered']) ? count($regionData['surrendered']) : 0 }}</span>
                             <div class="h-14 w-14 bg-indigo-100 rounded-full flex items-center justify-center">
                                 <i class="fas fa-person-circle-question text-indigo-600 text-xl"></i>
                             </div>
@@ -279,6 +287,9 @@
                             </thead>
                             <tbody id="recentActivityTable" class="bg-white divide-y divide-gray-200">
                                 <!-- Data will be populated by JavaScript -->
+                                <tr id="recentActivityTableLoading">
+                                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">Loading data...</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -306,10 +317,299 @@
     @include('modals.pag-modal')
     @include('modals.surrendered-modal')
 
-    <!-- Recent Activities Script -->
-    <script src="{{ asset('js/recent-activities.js') }}"></script>
-    <script src="{{ asset('js/dashboard-init.js') }}"></script>
+    <!-- Remove the external scripts that cause conflicts -->
+    <!-- <script src="{{ asset('js/recent-activities.js') }}"></script> -->
+    <!-- <script src="{{ asset('js/dashboard-init.js') }}"></script> -->
 
+    <script>
+        // Make sure window.charts exists as an object
+        window.charts = {};
+
+        // Create fallback data without redeclaring variables
+        window.dashboardData = {
+            // Monthly ISO operations data (fallback)
+            monthlyIsoData: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                data: [12, 19, 15, 8, 22, 14, 11, 13, 9, 16, 10, 14]
+            },
+
+            // Regional distribution data (fallback)
+            regionalData: {
+                labels: ['Region 4A (CALABARZON)', 'Region 4B (MIMAROPA)', 'Region 5 (Bicol)'],
+                data: [45, 30, 25]
+            },
+
+            // Fallback data for recent activities
+            recentActivities: [
+                {
+                    date: "2023-06-30",
+                    region: "Region 5 (Bicol)",
+                    category: "Surrendered",
+                    details: "Roberto Albay",
+                    location: "Legazpi Police Station"
+                },
+                {
+                    date: "2023-06-29",
+                    region: "Region 5 (Bicol)",
+                    category: "PAG Member",
+                    details: "Domingo Bicolano",
+                    location: "Daraga, Albay"
+                },
+                {
+                    date: "2023-06-28",
+                    region: "Region 5 (Bicol)",
+                    category: "Firearm",
+                    details: "Shotgun (12 gauge)",
+                    location: "Camalig, Albay"
+                },
+                {
+                    date: "2023-06-27",
+                    region: "Region 5 (Bicol)",
+                    category: "Sighting",
+                    details: "Vehicle matching description of known PAG member",
+                    location: "Sorsogon City"
+                },
+                {
+                    date: "2023-06-27",
+                    region: "Region 5 (Bicol)",
+                    category: "CTG Member",
+                    details: "Pedro Bicol",
+                    location: "Rural Sorsogon"
+                }
+            ]
+        };
+
+        // Function to create or update charts - completely rewritten for safety
+        function createChart(canvasId, chartType, chartData, chartOptions) {
+            try {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) {
+                    console.error(`Canvas with ID ${canvasId} not found`);
+                    return null;
+                }
+
+                const ctx = canvas.getContext('2d');
+
+                // Safely destroy previous chart instance if it exists
+                if (window.charts[canvasId] instanceof Chart) {
+                    window.charts[canvasId].destroy();
+                }
+
+                // Create new chart
+                window.charts[canvasId] = new Chart(ctx, {
+                    type: chartType,
+                    data: chartData,
+                    options: chartOptions
+                });
+
+                return window.charts[canvasId];
+            } catch (e) {
+                console.error(`Error creating chart ${canvasId}:`, e);
+                return null;
+            }
+        }
+
+        // Function to initialize ISO chart
+        function createIsoChart() {
+            try {
+                const data = window.dashboardData.monthlyIsoData;
+
+                createChart('isoChart', 'line', {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'ISO Operations',
+                        data: data.data,
+                        fill: false,
+                        borderColor: 'rgb(59, 130, 246)',
+                        tension: 0.1
+                    }]
+                }, {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Operations'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Month'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Monthly ISO Operations'
+                        }
+                    }
+                });
+                console.log("ISO Chart created successfully");
+            } catch (e) {
+                console.error("Error creating ISO chart:", e);
+            }
+        }
+
+        // Function to initialize Regional Distribution chart
+        function createRegionChart() {
+            try {
+                const data = window.dashboardData.regionalData;
+
+                createChart('regionChart', 'pie', {
+                    labels: data.labels,
+                    datasets: [{
+                        data: data.data,
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.7)',  // Blue
+                            'rgba(16, 185, 129, 0.7)',  // Green
+                            'rgba(245, 158, 11, 0.7)'   // Yellow
+                        ],
+                        borderColor: [
+                            'rgb(59, 130, 246)',
+                            'rgb(16, 185, 129)',
+                            'rgb(245, 158, 11)'
+                        ],
+                        borderWidth: 1
+                    }]
+                }, {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Regional Distribution'
+                        }
+                    }
+                });
+                console.log("Region Chart created successfully");
+            } catch (e) {
+                console.error("Error creating region chart:", e);
+            }
+        }
+
+        // Function to initialize the activity distribution chart
+        function createActivityDistributionChart() {
+            try {
+                const activities = window.dashboardData.recentActivities;
+
+                // Count categories from activities data
+                const categories = {};
+                activities.forEach(activity => {
+                    if (!categories[activity.category]) {
+                        categories[activity.category] = 0;
+                    }
+                    categories[activity.category]++;
+                });
+
+                // Prepare chart data
+                const labels = Object.keys(categories);
+                const data = Object.values(categories);
+                const backgroundColors = [
+                    'rgba(59, 130, 246, 0.7)',   // Blue
+                    'rgba(16, 185, 129, 0.7)',   // Green
+                    'rgba(245, 158, 11, 0.7)',   // Yellow
+                    'rgba(239, 68, 68, 0.7)',    // Red
+                    'rgba(139, 92, 246, 0.7)',   // Purple
+                    'rgba(236, 72, 153, 0.7)'    // Pink
+                ];
+
+                createChart('activityDistributionChart', 'bar', {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Activity Count',
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderColor: backgroundColors.map(color => color.replace('0.7', '1')),
+                        borderWidth: 1
+                    }]
+                }, {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Count'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Category'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                });
+                console.log("Activity Distribution Chart created successfully");
+            } catch (e) {
+                console.error("Error creating activity distribution chart:", e);
+            }
+        }
+
+        // Function to populate the recent activities table
+        function populateRecentActivitiesTable() {
+            try {
+                const tableBody = document.getElementById('recentActivityTable');
+                const activities = window.dashboardData.recentActivities;
+
+                if (tableBody) {
+                    tableBody.innerHTML = '';
+
+                    activities.forEach(activity => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${activity.date}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${activity.region}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${activity.category}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500">${activity.details}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${activity.location}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                    console.log("Table populated successfully");
+                }
+            } catch (e) {
+                console.error("Error populating table:", e);
+            }
+        }
+
+        // Initialize everything when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOM fully loaded, initializing dashboard elements");
+
+            // Make sure Chart.js is loaded
+            if (typeof Chart === 'undefined') {
+                console.error("Chart.js is not loaded!");
+                return;
+            }
+
+            // Delay chart creation slightly to ensure DOM is ready
+            setTimeout(function() {
+                // Initialize all charts
+                createIsoChart();
+                createRegionChart();
+                createActivityDistributionChart();
+
+                // Initialize the table
+                populateRecentActivitiesTable();
+
+                console.log("Dashboard initialization complete");
+            }, 100);
+        });
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Global variables
