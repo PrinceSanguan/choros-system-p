@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Models\CTG;
-use App\Models\CTGDocument;
 
 class CTGController extends Controller
 {
@@ -183,8 +182,6 @@ class CTGController extends Controller
             'last_seen' => 'nullable|date',
             'status' => 'required|string|in:active,neutralized,surrendered,deceased',
             'photo' => 'nullable|image|max:2048',
-            'documents' => 'nullable|array',
-            'documents.*' => 'nullable|file|max:10240',
         ]);
 
         // Handle file uploads
@@ -209,23 +206,6 @@ class CTGController extends Controller
 
         $ctg->save();
 
-        // Handle document uploads if any
-        if ($request->hasFile('documents')) {
-            foreach ($request->file('documents') as $document) {
-                $path = $document->store('ctg-documents', 'public');
-
-                // Create document record
-                $ctgDocument = new CTGDocument([
-                    'ctg_id' => $ctg->id,
-                    'file_path' => $path,
-                    'file_name' => $document->getClientOriginalName(),
-                    'file_type' => $document->getClientMimeType(),
-                ]);
-
-                $ctgDocument->save();
-            }
-        }
-
         return response()->json([
             'success' => true,
             'message' => 'CTG record saved successfully',
@@ -241,7 +221,7 @@ class CTGController extends Controller
      */
     public function show($id)
     {
-        $ctg = CTG::with('documents')->find($id);
+        $ctg = CTG::find($id);
 
         if (!$ctg) {
             return response()->json([
@@ -265,7 +245,6 @@ class CTGController extends Controller
      */
     public function update(Request $request, $id)
     {
-        // Find the CTG record
         $ctg = CTG::find($id);
 
         if (!$ctg) {
@@ -286,11 +265,9 @@ class CTGController extends Controller
             'last_seen' => 'nullable|date',
             'status' => 'required|string|in:active,neutralized,surrendered,deceased',
             'photo' => 'nullable|image|max:2048',
-            'documents' => 'nullable|array',
-            'documents.*' => 'nullable|file|max:10240',
         ]);
 
-        // Handle photo upload if provided
+        // Handle photo upload if a new one is provided
         if ($request->hasFile('photo')) {
             // Delete old photo if exists
             if ($ctg->photo_path) {
@@ -313,23 +290,6 @@ class CTGController extends Controller
 
         $ctg->save();
 
-        // Handle document uploads if any
-        if ($request->hasFile('documents')) {
-            foreach ($request->file('documents') as $document) {
-                $path = $document->store('ctg-documents', 'public');
-
-                // Create document record
-                $ctgDocument = new CTGDocument([
-                    'ctg_id' => $ctg->id,
-                    'file_path' => $path,
-                    'file_name' => $document->getClientOriginalName(),
-                    'file_type' => $document->getClientMimeType(),
-                ]);
-
-                $ctgDocument->save();
-            }
-        }
-
         return response()->json([
             'success' => true,
             'message' => 'CTG record updated successfully',
@@ -345,19 +305,13 @@ class CTGController extends Controller
      */
     public function destroy($id)
     {
-        $ctg = CTG::with('documents')->find($id);
+        $ctg = CTG::find($id);
 
         if (!$ctg) {
             return response()->json([
                 'success' => false,
                 'message' => 'CTG not found'
             ], 404);
-        }
-
-        // Delete associated documents and files
-        foreach ($ctg->documents as $document) {
-            Storage::disk('public')->delete($document->file_path);
-            $document->delete();
         }
 
         // Delete photo if exists

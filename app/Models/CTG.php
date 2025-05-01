@@ -42,12 +42,4 @@ class CTG extends Model
         'dob' => 'date',
         'last_seen' => 'datetime',
     ];
-
-    /**
-     * Get the documents for the CTG member.
-     */
-    public function documents()
-    {
-        return $this->hasMany(CTGDocument::class);
-    }
 }

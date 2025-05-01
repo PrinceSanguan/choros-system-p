@@ -82,3 +82,79 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Open modal when Add New button is clicked
+        document.getElementById('addCtg')?.addEventListener('click', function() {
+            document.getElementById('ctgForm').reset();
+            document.getElementById('ctgId').value = '';
+            document.getElementById('ctgPhotoPreview').classList.add('hidden');
+            document.querySelector('#ctgModal h3').textContent = 'Add CTG Member';
+            document.getElementById('ctgModal').classList.remove('hidden');
+        });
+
+        // Close modal
+        document.getElementById('closeCtgModal')?.addEventListener('click', function() {
+            document.getElementById('ctgModal').classList.add('hidden');
+        });
+
+        document.getElementById('cancelCtgModal')?.addEventListener('click', function() {
+            document.getElementById('ctgModal').classList.add('hidden');
+        });
+
+        // Photo preview handler
+        document.getElementById('ctgPhoto')?.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const preview = document.getElementById('ctgPhotoPreview');
+                    preview.src = event.target.result;
+                    preview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Form submission
+        document.getElementById('ctgForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const isEdit = document.getElementById('ctgId').value !== '';
+            const method = isEdit ? 'PUT' : 'POST';
+            const url = isEdit ? `/ctgs/${document.getElementById('ctgId').value}` : '/ctgs';
+
+            // If it's an edit operation, we need to use the _method field for Laravel
+            if (isEdit) {
+                formData.append('_method', 'PUT');
+            }
+
+            fetch(url, {
+                method: 'POST', // Always POST for FormData
+                body: formData,
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(isEdit ? 'CTG record updated successfully.' : 'CTG record created successfully.');
+                    document.getElementById('ctgModal').classList.add('hidden');
+                    if (typeof window.loadCtgs === 'function') {
+                        window.loadCtgs(); // Reload the table
+                    }
+                } else {
+                    alert('Failed to save CTG record: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while saving the CTG record.');
+            });
+        });
+    });
+</script>
