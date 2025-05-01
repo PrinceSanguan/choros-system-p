@@ -146,7 +146,9 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${firearm.surrendered_by || 'N/A'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(firearm.date)}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                        @if(auth()->user()->role !== 'user')
                         <button class="text-blue-600 hover:text-blue-900 edit-firearm" data-id="${firearm.id}">Edit</button>
+                        @endif
                         <button class="text-red-600 hover:text-red-900 delete-firearm" data-id="${firearm.id}">Delete</button>
                     </td>
                 `;

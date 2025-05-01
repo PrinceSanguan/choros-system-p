@@ -144,7 +144,9 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${sighting.description}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${sighting.coordinates || ''}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                        @if(auth()->user()->role !== 'user')
                         <button class="text-blue-600 hover:text-blue-900 edit-sighting" data-id="${sighting.id}">Edit</button>
+                        @endif
                         <button class="text-red-600 hover:text-red-900 delete-sighting" data-id="${sighting.id}">Delete</button>
                     </td>
                 `;

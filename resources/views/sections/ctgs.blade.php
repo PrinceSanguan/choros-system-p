@@ -129,12 +129,10 @@
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button class="text-blue-600 hover:text-blue-900 edit-ctg" data-id="${ctg.id}">
-                            <i class="fas fa-edit mr-1"></i>Edit
-                        </button>
-                        <button class="text-red-600 hover:text-red-900 delete-ctg" data-id="${ctg.id}">
-                            <i class="fas fa-trash mr-1"></i>Delete
-                        </button>
+                        @if(auth()->user()->role !== 'user')
+                        <button class="text-blue-600 hover:text-blue-900 edit-ctg" data-id="${ctg.id}">Edit</button>
+                        @endif
+                        <button class="text-red-600 hover:text-red-900 delete-ctg" data-id="${ctg.id}">Delete</button>
                     </td>
                 `;
 

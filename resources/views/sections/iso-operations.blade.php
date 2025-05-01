@@ -164,7 +164,9 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${operation.team_leader}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${operation.location}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                        @if(auth()->user()->role !== 'user')
                         <button class="text-blue-600 hover:text-blue-900 edit-operation" data-id="${operation.id}">Edit</button>
+                        @endif
                         <button class="text-red-600 hover:text-red-900 delete-operation" data-id="${operation.id}">Delete</button>
                     </td>
                 `;

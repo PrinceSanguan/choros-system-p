@@ -116,9 +116,11 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                @if(auth()->user()->role !== 'user')
                                 <button class="text-blue-600 hover:text-blue-900 mr-3 edit-btn" data-id="${item.id}">
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
+                                @endif
                                 <button class="text-red-600 hover:text-red-900 delete-btn" data-id="${item.id}">
                                     <i class="fas fa-trash"></i> Delete
                                 </button>

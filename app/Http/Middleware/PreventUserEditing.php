@@ -22,11 +22,11 @@ class PreventUserEditing
             return $next($request);
         }
 
-        // For regular users, block edit, update, and delete requests
+        // For regular users, block only edit/update requests (PUT, PATCH)
+        // Allow POST (add) and DELETE (delete) requests
         $method = $request->method();
-        if (in_array($method, ['PUT', 'PATCH', 'DELETE']) ||
-            ($method === 'POST' && !str_contains($request->path(), 'documents'))) {
-            abort(403, 'You do not have permission to edit or delete records.');
+        if (in_array($method, ['PUT', 'PATCH'])) {
+            abort(403, 'You do not have permission to edit records.');
         }
 
         return $next($request);

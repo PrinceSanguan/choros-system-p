@@ -56,9 +56,11 @@
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap flex">
+                            @if($user->role !== 'user')
                             <a href="{{ route('admin.users.edit', $user) }}" class="text-blue-600 hover:text-blue-900 mr-3">
                                 <i class="fas fa-edit"></i> Edit
                             </a>
+                            @endif
                             @if(auth()->id() !== $user->id)
                             <form action="{{ route('admin.users.destroy', $user) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this user?');" class="inline">
                                 @csrf
