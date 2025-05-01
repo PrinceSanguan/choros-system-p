@@ -311,255 +311,179 @@
     <script src="{{ asset('js/dashboard-init.js') }}"></script>
 
     <script>
-        // Store data from PHP to JavaScript
-        const sampleData = @json($regionData);
-
-        // Dashboard statistics
-        const dashboardStats = {
-            isoCount: sampleData.isoOperations.length,
-            sightingsCount: sampleData.sightings.length,
-            firearmsCount: sampleData.firearms.length,
-            ctgCount: sampleData.ctgs.length,
-            pagCount: sampleData.pags.length,
-            surrenderedCount: sampleData.surrendered.length
-        };
-
-        // Recent activities
-        function getRecentActivities() {
-            let activities = [];
-
-            // Add all data to activities array
-            sampleData.isoOperations.forEach(op => {
-                activities.push({
-                    date: op.date.split('T')[0],
-                    region: getRegionName(op.region),
-                    category: 'ISO Operation',
-                    details: op.name,
-                    location: op.location
-                });
-            });
-
-            sampleData.sightings.forEach(sighting => {
-                activities.push({
-                    date: sighting.date.split('T')[0],
-                    region: getRegionName(sighting.region),
-                    category: 'Sighting',
-                    details: sighting.description.substring(0, 50) + '...',
-                    location: sighting.location
-                });
-            });
-
-            sampleData.firearms.forEach(firearm => {
-                activities.push({
-                    date: firearm.date.split('T')[0],
-                    region: getRegionName(firearm.region),
-                    category: 'Firearm',
-                    details: `${firearm.type} (${firearm.caliber})`,
-                    location: firearm.location
-                });
-            });
-
-            sampleData.ctgs.forEach(ctg => {
-                activities.push({
-                    date: ctg.lastSeen ? ctg.lastSeen.split('T')[0] : ctg.dob,
-                    region: getRegionName(ctg.region),
-                    category: 'CTG Member',
-                    details: ctg.name,
-                    location: ctg.address
-                });
-            });
-
-            sampleData.pags.forEach(pag => {
-                activities.push({
-                    date: pag.lastSeen ? pag.lastSeen.split('T')[0] : pag.dob,
-                    region: getRegionName(pag.region),
-                    category: 'PAG Member',
-                    details: pag.name,
-                    location: pag.address
-                });
-            });
-
-            sampleData.surrendered.forEach(person => {
-                activities.push({
-                    date: person.dateSurrendered.split('T')[0],
-                    region: getRegionName(person.region),
-                    category: 'Surrendered',
-                    details: person.name,
-                    location: person.location
-                });
-            });
-
-            // Sort by date (newest first)
-            return activities.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
-        }
-
-        // Helper functions
-        function getRegionName(regionCode) {
-            switch(regionCode) {
-                case '4a': return 'Region 4A (CALABARZON)';
-                case '4b': return 'Region 4B (MIMAROPA)';
-                case '5': return 'Region 5 (Bicol)';
-                default: return 'Unknown Region';
-            }
-        }
-
         document.addEventListener('DOMContentLoaded', function() {
-            // Set the dashboard section as active by default
-            document.getElementById('dashboard').classList.add('active');
+            // Global variables
+            window.charts = {}; // Store chart instances
 
-            // Add click event listeners to all navigation links
-            const navLinks = document.querySelectorAll('.nav-link');
-            navLinks.forEach(link => {
+            // Initialize navigation
+            initializeNavigation();
+
+            // Default to dashboard view
+            showSection('dashboard');
+
+            // Setup region filter
+            setupRegionFilter();
+
+            // Define loadCtgs globally to fix the "not defined" error
+            if (typeof window.loadCtgs !== 'function') {
+                window.loadCtgs = function() {
+                    console.log('Loading CTG data...');
+                    const ctgTableBody = document.getElementById('ctgTableBody');
+                    const loadingElement = document.getElementById('ctgTableLoading');
+                    const emptyElement = document.getElementById('ctgTableEmpty');
+                    const regionFilter = document.getElementById('ctgRegionFilter')?.value || 'all';
+                    const rowCountElement = document.getElementById('rowCount');
+
+                    if (!ctgTableBody) {
+                        console.error('CTG table body not found');
+                        return;
+                    }
+
+                    // Show loading indicator
+                    if (loadingElement) loadingElement.classList.remove('hidden');
+
+                    // Clear existing table content
+                    ctgTableBody.innerHTML = '';
+                    if (emptyElement) emptyElement.classList.add('hidden');
+
+                    // Construct URL with query parameters if needed
+                    let url = '/ctgs';
+                    if (regionFilter !== 'all') {
+                        url += `?region=${regionFilter}`;
+                    }
+
+                    fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Network response error: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('CTG API Response:', data);
+
+                        // Hide loading indicator
+                        if (loadingElement) loadingElement.classList.add('hidden');
+
+                        if (data.success && data.data && data.data.length > 0) {
+                            // Update row count display
+                            if (rowCountElement) {
+                                rowCountElement.textContent = data.data.length;
+                            }
+
+                            // Render data received from API
+                            if (typeof renderCtgTable === 'function') {
+                                renderCtgTable(data.data);
+                            } else {
+                                console.error('renderCtgTable function not found');
+                            }
+                        } else {
+                            // Show empty message
+                            if (emptyElement) emptyElement.classList.remove('hidden');
+                            if (rowCountElement) {
+                                rowCountElement.textContent = '0';
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading CTG data:', error);
+                        if (loadingElement) loadingElement.classList.add('hidden');
+                        if (emptyElement) {
+                            emptyElement.classList.remove('hidden');
+                            emptyElement.textContent = `Error loading data: ${error.message}. Please try again later.`;
+                        }
+                        if (rowCountElement) {
+                            rowCountElement.textContent = '0';
+                        }
+                    });
+                };
+            }
+        });
+
+        // Function to create or update charts
+        function createChart(canvasId, type, data, options) {
+            // Destroy existing chart if it exists
+            if (window.charts[canvasId]) {
+                window.charts[canvasId].destroy();
+            }
+
+            const ctx = document.getElementById(canvasId)?.getContext('2d');
+            if (!ctx) {
+                console.error(`Canvas with ID ${canvasId} not found`);
+                return null;
+            }
+
+            window.charts[canvasId] = new Chart(ctx, {
+                type: type,
+                data: data,
+                options: options
+            });
+
+            return window.charts[canvasId];
+        }
+
+        // Initialize navigation
+        function initializeNavigation() {
+            // Toggle sidebar
+            document.getElementById('toggleSidebar').addEventListener('click', function() {
+                document.getElementById('sidebar').classList.toggle('sidebar-collapsed');
+                document.getElementById('content').classList.toggle('content-expanded');
+            });
+
+            // Navigation links
+            document.querySelectorAll('.nav-link').forEach(link => {
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
 
-                    // Get the target section
-                    const targetSectionId = this.getAttribute('data-section');
-
-                    // Hide all sections
-                    const allSections = document.querySelectorAll('.section-content');
-                    allSections.forEach(section => section.classList.remove('active'));
-
-                    // Show the target section
-                    const targetSection = document.getElementById(targetSectionId);
-                    if (targetSection) {
-                        targetSection.classList.add('active');
-                    }
-
-                    // Update active navigation link
-                    navLinks.forEach(navLink => {
-                        navLink.classList.remove('bg-blue-800');
-                        navLink.classList.remove('border-blue-500');
-                        navLink.classList.add('border-transparent');
+                    // Remove active class from all links
+                    document.querySelectorAll('.nav-link').forEach(l => {
+                        l.classList.remove('bg-blue-800');
+                        l.classList.remove('border-blue-500');
+                        l.classList.add('border-transparent');
                     });
 
+                    // Add active class to clicked link
                     this.classList.add('bg-blue-800');
                     this.classList.add('border-blue-500');
                     this.classList.remove('border-transparent');
 
-                    // Load section-specific data if needed
-                    if (targetSectionId === 'ctgs' && window.populateCTGsTable) {
-                        window.populateCTGsTable();
-                    }
+                    // Show corresponding section
+                    const section = this.getAttribute('data-section');
+                    showSection(section);
                 });
             });
-
-            // Handle sidebar toggle
-            document.getElementById('toggleSidebar').addEventListener('click', function() {
-                const sidebar = document.getElementById('sidebar');
-                const content = document.getElementById('content');
-
-                sidebar.classList.toggle('sidebar-collapsed');
-                content.classList.toggle('content-expanded');
-            });
-
-            // Initialize dashboard data
-            populateDashboardData();
-
-            // Render charts immediately with static data
-            renderSampleCharts();
-        });
-
-        // Function to populate dashboard data
-        function populateDashboardData() {
-            // Use the data from the recent-activities.js file instead
-            // This function remains as a backup or for other dashboard elements
         }
 
-        // Function to render sample charts for demonstration
-        function renderSampleCharts() {
-            // Sample data for charts
-            const isoChartData = {
-                labels: ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'],
-                data: [11, 5, 6, 2, 2, 9]
-            };
+        // Show section
+        function showSection(sectionId) {
+            document.querySelectorAll('.section-content').forEach(section => {
+                section.classList.remove('active');
+            });
 
-            const regionChartData = {
-                labels: ['Region 4A (CALABARZON)', 'Region 4B (MIMAROPA)', 'Region 5 (Bicol)'],
-                data: [35, 25, 40]
-            };
+            const activeSection = document.getElementById(sectionId);
+            if (activeSection) {
+                activeSection.classList.add('active');
 
-            // Render ISO Operations chart
-            const isoCtx = document.getElementById('isoChart');
-            if (isoCtx) {
-                new Chart(isoCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: isoChartData.labels,
-                        datasets: [{
-                            label: 'ISO Operations',
-                            data: isoChartData.data,
-                            backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                            borderColor: 'rgba(59, 130, 246, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Number of Operations'
-                                }
-                            },
-                            x: {
-                                title: {
-                                    display: true,
-                                    text: 'Month'
-                                }
-                            }
-                        }
-                    }
-                });
+                // Load data for the section if needed
+                if (sectionId === 'ctgs' && typeof window.loadCtgs === 'function') {
+                    window.loadCtgs();
+                }
+                // Add other section-specific initializations here
             }
+        }
 
-            // Render Regional Distribution chart
-            const regionCtx = document.getElementById('regionChart');
-            if (regionCtx) {
-                new Chart(regionCtx, {
-                    type: 'pie',
-                    data: {
-                        labels: regionChartData.labels,
-                        datasets: [{
-                            data: regionChartData.data,
-                            backgroundColor: [
-                                'rgba(59, 130, 246, 0.7)',
-                                'rgba(16, 185, 129, 0.7)',
-                                'rgba(245, 158, 11, 0.7)'
-                            ],
-                            borderColor: [
-                                'rgba(59, 130, 246, 1)',
-                                'rgba(16, 185, 129, 1)',
-                                'rgba(245, 158, 11, 1)'
-                            ],
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                            },
-                            title: {
-                                display: false
-                            }
-                        }
-                    }
-                });
-            }
-
-            // Initialize recent activities table
-            if (window.populateRecentActivitiesTable) {
-                window.populateRecentActivitiesTable();
-            }
-
-            // Create activity distribution chart
-            if (window.createActivityDistributionChart) {
-                window.createActivityDistributionChart();
-            }
+        // Setup region filter
+        function setupRegionFilter() {
+            document.getElementById('regionFilter').addEventListener('change', function() {
+                // Implement region filtering logic here
+                console.log('Region filter changed to:', this.value);
+            });
         }
     </script>
 </body>
