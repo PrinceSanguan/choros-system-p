@@ -42,6 +42,7 @@ Route::get('/debug/ctgs', function() {
 Route::middleware(['auth'])->group(function () {
     // Dashboard Route
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/stats', [DashboardController::class, 'getStats'])->name('dashboard.stats');
 
     // Chart API Routes
     Route::get('/api/iso-operations-by-month', [DashboardController::class, 'getISOOperationsByMonth'])->name('api.iso-operations-by-month');

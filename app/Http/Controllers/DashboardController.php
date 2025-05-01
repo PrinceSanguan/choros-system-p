@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Models\ISOOperation;
 use App\Models\Sighting;
 use App\Models\Firearm;
@@ -32,26 +33,21 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $regionData = [];
 
-        // Load region-specific data based on user role
-        if ($user->role === 'admin') {
-            // Admin can see all regions
-            $regionData = $this->getAllRegionsData();
-        } else {
-            // Region-specific user can only see their region data
-            switch ($user->username) {
-                case 'RMFB4A':
-                    $regionData = $this->getRegionData('4a');
-                    break;
-                case 'RMFB4B':
-                    $regionData = $this->getRegionData('4b');
-                    break;
-                case 'RMFB5':
-                    $regionData = $this->getRegionData('5');
-                    break;
-            }
-        }
+        // Always load all regions data for all users
+        $regionData = $this->getAllRegionsData();
+
+        // Log the dashboard data being sent to the view
+        Log::info('Dashboard Data Size', [
+            'user_id' => $user->id,
+            'username' => $user->username,
+            'isoOperations' => count($regionData['isoOperations'] ?? []),
+            'sightings' => count($regionData['sightings'] ?? []),
+            'firearms' => count($regionData['firearms'] ?? []),
+            'ctgs' => count($regionData['ctgs'] ?? []),
+            'pags' => count($regionData['pags'] ?? []),
+            'surrendered' => count($regionData['surrendered'] ?? []),
+        ]);
 
         return view('dashboard', [
             'user' => $user,
@@ -528,5 +524,65 @@ class DashboardController extends Controller
             'success' => true,
             'message' => 'CTG record saved successfully',
         ]);
+    }
+
+    /**
+     * Get dashboard statistics via AJAX
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getStats(Request $request)
+    {
+        $user = Auth::user();
+        $region = $request->query('region', 'all');
+
+        // Log request for debugging
+        Log::info('Dashboard Stats Request', [
+            'user_id' => $user->id,
+            'username' => $user->username,
+            'role' => $user->role,
+            'requested_region' => $region,
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+        ]);
+
+        // Allow all users to view all regions if requested
+        // We're not restricting users to their own region anymore
+
+        // Count all records
+        if ($region === 'all') {
+            // Count all records without filtering by region
+            $isoCount = ISOOperation::count();
+            $sightingsCount = Sighting::count();
+            $firearmsCount = Firearm::count();
+            $ctgsCount = CTG::count();
+            $pagsCount = PAG::count();
+            $surrenderedCount = Surrendered::count();
+        } else {
+            // Count records for the specific region
+            $isoCount = ISOOperation::where('region', $region)->count();
+            $sightingsCount = Sighting::where('region', $region)->count();
+            $firearmsCount = Firearm::where('region', $region)->count();
+            $ctgsCount = CTG::where('region', $region)->count();
+            $pagsCount = PAG::where('region', $region)->count();
+            $surrenderedCount = Surrendered::where('region', $region)->count();
+        }
+
+        $stats = [
+            'isoOperations' => $isoCount,
+            'sightings' => $sightingsCount,
+            'firearms' => $firearmsCount,
+            'ctgs' => $ctgsCount,
+            'pags' => $pagsCount,
+            'surrendered' => $surrenderedCount,
+            'region' => $region,
+            'timestamp' => now()->toDateTimeString()
+        ];
+
+        // Log response for debugging
+        Log::info('Dashboard Stats Response', $stats);
+
+        return response()->json($stats);
     }
 }

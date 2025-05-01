@@ -586,149 +586,99 @@
             }
         }
 
-        // Initialize everything when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOM fully loaded, initializing dashboard elements");
-
-            // Make sure Chart.js is loaded
-            if (typeof Chart === 'undefined') {
-                console.error("Chart.js is not loaded!");
-                return;
-            }
-
-            // Delay chart creation slightly to ensure DOM is ready
-            setTimeout(function() {
-                // Initialize all charts
-                createIsoChart();
-                createRegionChart();
-                createActivityDistributionChart();
-
-                // Initialize the table
-                populateRecentActivitiesTable();
-
-                console.log("Dashboard initialization complete");
-            }, 100);
-        });
-    </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Global variables
-            window.charts = {}; // Store chart instances
-
-            // Initialize navigation
-            initializeNavigation();
-
-            // Default to dashboard view
-            showSection('dashboard');
-
-            // Setup region filter
-            setupRegionFilter();
-
-            // Define loadCtgs globally to fix the "not defined" error
-            if (typeof window.loadCtgs !== 'function') {
-                window.loadCtgs = function() {
-                    console.log('Loading CTG data...');
-                    const ctgTableBody = document.getElementById('ctgTableBody');
-                    const loadingElement = document.getElementById('ctgTableLoading');
-                    const emptyElement = document.getElementById('ctgTableEmpty');
-                    const regionFilter = document.getElementById('ctgRegionFilter')?.value || 'all';
-                    const rowCountElement = document.getElementById('rowCount');
-
-                    if (!ctgTableBody) {
-                        console.error('CTG table body not found');
-                        return;
-                    }
-
-                    // Show loading indicator
-                    if (loadingElement) loadingElement.classList.remove('hidden');
-
-                    // Clear existing table content
-                    ctgTableBody.innerHTML = '';
-                    if (emptyElement) emptyElement.classList.add('hidden');
-
-                    // Construct URL with query parameters if needed
-                    let url = '/ctgs';
-                    if (regionFilter !== 'all') {
-                        url += `?region=${regionFilter}`;
-                    }
-
-                    fetch(url, {
-                        method: 'GET',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
-                        }
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`Network response error: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log('CTG API Response:', data);
-
-                        // Hide loading indicator
-                        if (loadingElement) loadingElement.classList.add('hidden');
-
-                        if (data.success && data.data && data.data.length > 0) {
-                            // Update row count display
-                            if (rowCountElement) {
-                                rowCountElement.textContent = data.data.length;
-                            }
-
-                            // Render data received from API
-                            if (typeof renderCtgTable === 'function') {
-                                renderCtgTable(data.data);
-                            } else {
-                                console.error('renderCtgTable function not found');
-                            }
-                        } else {
-                            // Show empty message
-                            if (emptyElement) emptyElement.classList.remove('hidden');
-                            if (rowCountElement) {
-                                rowCountElement.textContent = '0';
-                            }
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error loading CTG data:', error);
-                        if (loadingElement) loadingElement.classList.add('hidden');
-                        if (emptyElement) {
-                            emptyElement.classList.remove('hidden');
-                            emptyElement.textContent = `Error loading data: ${error.message}. Please try again later.`;
-                        }
-                        if (rowCountElement) {
-                            rowCountElement.textContent = '0';
-                        }
-                    });
-                };
-            }
-        });
-
-        // Function to create or update charts
-        function createChart(canvasId, type, data, options) {
-            // Destroy existing chart if it exists
-            if (window.charts[canvasId]) {
-                window.charts[canvasId].destroy();
-            }
-
-            const ctx = document.getElementById(canvasId)?.getContext('2d');
-            if (!ctx) {
-                console.error(`Canvas with ID ${canvasId} not found`);
-                return null;
-            }
-
-            window.charts[canvasId] = new Chart(ctx, {
-                type: type,
-                data: data,
-                options: options
+        // Function to setup region filter
+        function setupRegionFilter() {
+            document.getElementById('regionFilter').addEventListener('change', function() {
+                // Implement region filtering logic here
+                console.log('Region filter changed to:', this.value);
+                refreshDashboardStats(this.value);
             });
 
-            return window.charts[canvasId];
+            // Add event listener for refresh button
+            document.getElementById('refreshData').addEventListener('click', function() {
+                const region = document.getElementById('regionFilter').value;
+                refreshDashboardStats(region);
+            });
         }
 
-        // Initialize navigation
+        // Function to refresh dashboard stats via AJAX
+        function refreshDashboardStats(region = 'all') {
+            console.log('Refreshing dashboard stats for region:', region);
+
+            // Update region dropdown to match the current region
+            const regionFilter = document.getElementById('regionFilter');
+            if (regionFilter && regionFilter.value !== region) {
+                regionFilter.value = region;
+            }
+
+            // Show loading indicators
+            document.querySelectorAll('#dashboard [id$="Count"]').forEach(el => {
+                el.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            });
+
+            // Prevent browser caching by adding timestamp
+            const timestamp = new Date().getTime();
+
+            fetch('/dashboard/stats?region=' + region + '&_=' + timestamp, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Received dashboard stats:', data);
+                // Update the count displays with animation
+                updateCountWithAnimation('isoCount', data.isoOperations || 0);
+                updateCountWithAnimation('sightingsCount', data.sightings || 0);
+                updateCountWithAnimation('firearmsCount', data.firearms || 0);
+                updateCountWithAnimation('ctgCount', data.ctgs || 0);
+                updateCountWithAnimation('pagCount', data.pags || 0);
+                updateCountWithAnimation('surrenderedCount', data.surrendered || 0);
+
+                // Update the region displayed in the testing panel if it exists
+                const testOutput = document.getElementById('testOutput');
+                if (testOutput) {
+                    testOutput.innerHTML = '<p>Current region: ' + data.region + '</p><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                }
+            })
+            .catch(error => {
+                console.error('Error refreshing dashboard stats:', error);
+                // Reset counts in case of error
+                document.querySelectorAll('#dashboard [id$="Count"]').forEach(el => {
+                    el.textContent = '0';
+                });
+                // Show the error in console for debugging
+                alert('Error loading dashboard data. Please check the console for details.');
+            });
+        }
+
+        // Function to update count with a simple animation
+        function updateCountWithAnimation(elementId, newValue) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+
+            // Highlight the element to show it's updating
+            element.style.transition = 'background-color 0.5s';
+            element.style.backgroundColor = 'rgba(59, 130, 246, 0.2)';
+
+            // Update the value
+            element.textContent = newValue;
+
+            // Remove highlight after a delay
+            setTimeout(() => {
+                element.style.backgroundColor = 'transparent';
+            }, 500);
+        }
+
+        // Function to initialize UI navigation
         function initializeNavigation() {
             // Toggle sidebar
             document.getElementById('toggleSidebar').addEventListener('click', function() {
@@ -773,18 +723,133 @@
                 // Load data for the section if needed
                 if (sectionId === 'ctgs' && typeof window.loadCtgs === 'function') {
                     window.loadCtgs();
+                } else if (sectionId === 'dashboard') {
+                    // Refresh dashboard stats when dashboard is shown
+                    refreshDashboardStats();
                 }
                 // Add other section-specific initializations here
             }
         }
 
-        // Setup region filter
-        function setupRegionFilter() {
-            document.getElementById('regionFilter').addEventListener('change', function() {
-                // Implement region filtering logic here
-                console.log('Region filter changed to:', this.value);
-            });
+        // Define loadCtgs globally to fix the "not defined" error
+        if (typeof window.loadCtgs !== 'function') {
+            window.loadCtgs = function() {
+                console.log('Loading CTG data...');
+                const ctgTableBody = document.getElementById('ctgTableBody');
+                const loadingElement = document.getElementById('ctgTableLoading');
+                const emptyElement = document.getElementById('ctgTableEmpty');
+                const regionFilter = document.getElementById('ctgRegionFilter')?.value || 'all';
+                const rowCountElement = document.getElementById('rowCount');
+
+                if (!ctgTableBody) {
+                    console.error('CTG table body not found');
+                    return;
+                }
+
+                // Show loading indicator
+                if (loadingElement) loadingElement.classList.remove('hidden');
+
+                // Clear existing table content
+                ctgTableBody.innerHTML = '';
+                if (emptyElement) emptyElement.classList.add('hidden');
+
+                // Construct URL with query parameters if needed
+                let url = '/ctgs';
+                if (regionFilter !== 'all') {
+                    url += `?region=${regionFilter}`;
+                }
+
+                fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('CTG API Response:', data);
+
+                    // Hide loading indicator
+                    if (loadingElement) loadingElement.classList.add('hidden');
+
+                    if (data.success && data.data && data.data.length > 0) {
+                        // Update row count display
+                        if (rowCountElement) {
+                            rowCountElement.textContent = data.data.length;
+                        }
+
+                        // Render data received from API
+                        if (typeof renderCtgTable === 'function') {
+                            renderCtgTable(data.data);
+                        } else {
+                            console.error('renderCtgTable function not found');
+                        }
+                    } else {
+                        // Show empty message
+                        if (emptyElement) emptyElement.classList.remove('hidden');
+                        if (rowCountElement) {
+                            rowCountElement.textContent = '0';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading CTG data:', error);
+                    if (loadingElement) loadingElement.classList.add('hidden');
+                    if (emptyElement) {
+                        emptyElement.classList.remove('hidden');
+                        emptyElement.textContent = `Error loading data: ${error.message}. Please try again later.`;
+                    }
+                    if (rowCountElement) {
+                        rowCountElement.textContent = '0';
+                    }
+                });
+            };
         }
+
+        // Initialize everything when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOM fully loaded, initializing dashboard elements");
+
+            // Remove test dashboard stats call
+            // testDashboardStats();
+
+            // Make sure Chart.js is loaded
+            if (typeof Chart === 'undefined') {
+                console.error("Chart.js is not loaded!");
+                return;
+            }
+
+            // Global variables
+            window.charts = {}; // Store chart instances
+
+            // Initialize navigation
+            initializeNavigation();
+
+            // Default to dashboard view
+            showSection('dashboard');
+
+            // Initialize all charts
+            createIsoChart();
+            createRegionChart();
+            createActivityDistributionChart();
+
+            // Initialize the table
+            populateRecentActivitiesTable();
+
+            // Setup region filter
+            setupRegionFilter();
+
+            // Refresh dashboard stats IMMEDIATELY on page load
+            refreshDashboardStats();
+
+            console.log("Dashboard initialization complete");
+        });
     </script>
 </body>
 </html>
