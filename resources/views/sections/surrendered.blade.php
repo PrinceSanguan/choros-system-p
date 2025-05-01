@@ -9,6 +9,9 @@
                 <option value="4b">Region 4B (MIMAROPA)</option>
                 <option value="5">Region 5 (Bicol)</option>
             </select>
+            <button id="exportSurrenderedData" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center">
+                <i class="fas fa-download mr-2"></i>Export Data
+            </button>
             <button id="addSurrendered" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
                 <i class="fas fa-plus mr-2"></i>Add New
             </button>
@@ -189,5 +192,106 @@
         document.getElementById('addSurrendered')?.addEventListener('click', function() {
             // This will be handled by the modal's own event listener
         });
+
+        // Set up event listener for export button
+        document.getElementById('exportSurrenderedData')?.addEventListener('click', function() {
+            exportSurrenderedData();
+        });
+
+        // Function to export surrendered data
+        function exportSurrenderedData() {
+            // Show loading indicator
+            const exportBtn = document.getElementById('exportSurrenderedData');
+            const originalText = exportBtn.innerHTML;
+            exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Exporting...';
+            exportBtn.disabled = true;
+
+            try {
+                // Get visible table data
+                const table = document.querySelector('#surrenderedTableBody').closest('table');
+                const headers = [];
+                const rows = [];
+
+                // Extract headers (excluding Photo and Actions columns)
+                const headerRow = table.querySelector('thead tr');
+                headerRow.querySelectorAll('th').forEach(th => {
+                    const headerText = th.textContent.trim();
+                    if (headerText.toUpperCase() !== 'ACTIONS' && headerText.toUpperCase() !== 'PHOTO') {
+                        headers.push(headerText);
+                    }
+                });
+
+                // Extract visible row data
+                table.querySelectorAll('tbody tr').forEach(row => {
+                    if (row.style.display !== 'none') {
+                        const rowData = [];
+                        let cellIndex = 0;
+
+                        row.querySelectorAll('td').forEach((cell, index) => {
+                            // Skip photo column (first) and actions column (last)
+                            if (index > 0 && index < row.querySelectorAll('td').length - 1) {
+                                // For status column with span
+                                if (cell.querySelector('span')) {
+                                    rowData.push(cell.querySelector('span').textContent.trim());
+                                } else {
+                                    rowData.push(cell.textContent.trim());
+                                }
+                                cellIndex++;
+                            }
+                        });
+
+                        if (cellIndex > 0) {
+                            rows.push(rowData);
+                        }
+                    }
+                });
+
+                // Create CSV content
+                let csvContent = "data:text/csv;charset=utf-8,";
+
+                // Add header row
+                csvContent += headers.join(',') + '\r\n';
+
+                // Add data rows with proper CSV escaping
+                rows.forEach(row => {
+                    const formattedRow = row.map(cell => {
+                        // Check if cell contains commas, quotes, or newlines
+                        if (cell.includes(',') || cell.includes('"') || cell.includes('\n') || cell.includes('\r')) {
+                            // Escape quotes by doubling them and wrap in quotes
+                            return '"' + cell.replace(/"/g, '""') + '"';
+                        }
+                        return cell;
+                    });
+                    csvContent += formattedRow.join(',') + '\r\n';
+                });
+
+                // Create download link
+                const regionFilter = document.getElementById('surrenderedRegionFilter').value;
+                const regionText = regionFilter !== 'all'
+                    ? document.getElementById('surrenderedRegionFilter').options[document.getElementById('surrenderedRegionFilter').selectedIndex].text
+                    : 'All Regions';
+
+                const encodedUri = encodeURI(csvContent);
+                const date = new Date().toISOString().split('T')[0];
+                const filename = `Surrendered_Data_${regionText.replace(/[^a-z0-9]/gi, '_')}_${date}.csv`;
+
+                // Create and trigger download link
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                console.log("CSV file exported successfully");
+            } catch (error) {
+                console.error("Error exporting CSV:", error);
+                alert("Failed to export data: " + error.message);
+            } finally {
+                // Reset button state
+                exportBtn.innerHTML = originalText;
+                exportBtn.disabled = false;
+            }
+        }
     });
 </script>

@@ -58,6 +58,7 @@ Route::middleware(['auth'])->group(function () {
     });
     Route::post('/ctgs', [CTGController::class, 'store'])->name('ctgs.store');
     Route::get('/ctgs', [CTGController::class, 'index'])->name('ctgs.index');
+    Route::get('/ctgs/export', [CTGController::class, 'export'])->name('ctgs.export');
     Route::get('/ctgs/{id}', [CTGController::class, 'show'])->name('ctgs.show');
     Route::put('/ctgs/{id}', [CTGController::class, 'update'])->name('ctgs.update');
     Route::delete('/ctgs/{id}', [CTGController::class, 'destroy'])->name('ctgs.destroy');
@@ -105,6 +106,7 @@ Route::middleware(['auth'])->group(function () {
     // Surrendered Routes
     Route::post('/surrendered', [SurrenderedController::class, 'store'])->name('surrendered.store');
     Route::get('/surrendered', [SurrenderedController::class, 'index'])->name('surrendered.index');
+    Route::get('/surrendered/export', [SurrenderedController::class, 'export'])->name('surrendered.export');
     Route::get('/surrendered/{id}', [SurrenderedController::class, 'show'])->name('surrendered.show');
     Route::put('/surrendered/{id}', [SurrenderedController::class, 'update'])->name('surrendered.update');
     Route::delete('/surrendered/{id}', [SurrenderedController::class, 'destroy'])->name('surrendered.destroy');

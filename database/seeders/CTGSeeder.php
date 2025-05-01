@@ -106,8 +106,11 @@ class CTGSeeder extends Seeder
             ]
         ];
 
-        foreach ($ctgs as $ctg) {
-            CTG::create($ctg);
+        foreach ($ctgs as $ctgData) {
+            CTG::updateOrCreate(
+                ['name' => $ctgData['name'], 'region' => $ctgData['region']],
+                $ctgData
+            );
         }
     }
 }

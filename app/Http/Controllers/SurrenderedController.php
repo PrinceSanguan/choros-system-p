@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Surrendered;
 use App\Models\SurrenderedDocument;
+use Illuminate\Support\Facades\Log;
 
 class SurrenderedController extends Controller
 {
@@ -274,5 +275,116 @@ class SurrenderedController extends Controller
             'success' => true,
             'message' => 'Surrendered record deleted successfully'
         ]);
+    }
+
+    /**
+     * Export Surrendered data to Excel/CSV.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function export(Request $request)
+    {
+        // Log the export request
+        Log::info('Surrendered export method called', [
+            'has_region' => $request->has('region'),
+            'region_param' => $request->query('region')
+        ]);
+
+        // Get the Surrendered data
+        if ($request->has('region') && $request->query('region') !== 'all') {
+            $region = $request->query('region');
+            $surrendered = Surrendered::where('region', $region)->get();
+            Log::info('Exporting Surrendered filtered by region', [
+                'region' => $region,
+                'count' => $surrendered->count()
+            ]);
+        } else {
+            $surrendered = Surrendered::all();
+            Log::info('Exporting all Surrendered', [
+                'count' => $surrendered->count()
+            ]);
+        }
+
+        // Define column headers
+        $headers = [
+            'Name', 'Region', 'Date of Birth', 'Place of Birth', 'Former Group',
+            'Date Surrendered', 'Status', 'Notes'
+        ];
+
+        // Format the region values
+        $regionMap = [
+            '4a' => 'Region 4A (CALABARZON)',
+            '4b' => 'Region 4B (MIMAROPA)',
+            '5' => 'Region 5 (Bicol)'
+        ];
+
+        // Create CSV content
+        $csv = implode(',', $headers) . "\n";
+
+        foreach ($surrendered as $person) {
+            // Format date values
+            $dob = $person->date_of_birth ? date('Y-m-d', strtotime($person->date_of_birth)) : '';
+            $dateSurrendered = $person->date_surrendered ? date('Y-m-d', strtotime($person->date_surrendered)) : '';
+
+            // Format region value
+            $regionFormatted = isset($regionMap[$person->region]) ? $regionMap[$person->region] : $person->region;
+
+            // Format status (capitalize first letter)
+            $status = ucfirst($person->status);
+
+            // Escape fields for CSV
+            $row = [
+                $this->escapeCsv($person->name),
+                $this->escapeCsv($regionFormatted),
+                $this->escapeCsv($dob),
+                $this->escapeCsv($person->place_of_birth),
+                $this->escapeCsv($person->former_group),
+                $this->escapeCsv($dateSurrendered),
+                $this->escapeCsv($status),
+                $this->escapeCsv($person->notes)
+            ];
+
+            $csv .= implode(',', $row) . "\n";
+        }
+
+        // Generate a filename with timestamp
+        $filename = 'Surrendered_Data_' . date('Y-m-d_His') . '.csv';
+
+        // Log the export completion
+        Log::info('Surrendered export completed', [
+            'filename' => $filename,
+            'rows' => $surrendered->count()
+        ]);
+
+        // Return the CSV as a downloadable file
+        return response($csv)
+            ->header('Content-Type', 'text/csv')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
+    }
+
+    /**
+     * Escape a string for CSV output.
+     *
+     * @param  string  $string
+     * @return string
+     */
+    private function escapeCsv($string)
+    {
+        // Convert to string if it's not already
+        $string = strval($string ?? '');
+
+        // If the string contains a comma, double quote, or newline, wrap it in double quotes
+        if (preg_match('/[,"\n\r]/', $string)) {
+            // Double up any double quotes
+            $string = str_replace('"', '""', $string);
+            // Wrap in quotes
+            $string = '"' . $string . '"';
+        }
+
+        return $string;
     }
 }
